@@ -2,7 +2,12 @@ module top(
    input clk,
    input reset_l,
 
-   output logic [7:0] led
+   output logic [7:0] led,
+   output logic hsync,
+   output logic vsync,
+   output logic [3:0] red,
+   output logic [3:0] green,
+   output logic [3:0] blue
    );
 
    logic [7:0] cpu_data_in, cpu_data_out;
@@ -16,9 +21,19 @@ module top(
       .clk, .cs(ram_cs), .rw, .addr(mem_addr), .data_in(cpu_data_out), .data_out(cpu_data_in)
    );
 
+   vga vga0(
+      .clk,
+      .hsync,
+      .vsync,
+      .red,    
+      .green,    
+      .blue
+   );
+
    cpu cpu0(
       .clk, .reset(~reset_l), .rw, .addr, .data_in(cpu_data_in), .data_out(cpu_data_out)
    );
+
 
    assign led = display;
 

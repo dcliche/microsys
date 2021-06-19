@@ -9,8 +9,11 @@
 // Include model header, generated from Verilating "top.v"
 #include "Vtop.h"
 
-const int screen_width = 640;
-const int screen_height = 480;
+const int screen_width = 800;
+const int screen_height = 600;
+
+const int vga_width = 256;
+const int vga_height = 192;
 
 int main(int argc, char **argv, char **env)
 {
@@ -18,13 +21,13 @@ int main(int argc, char **argv, char **env)
 
     SDL_Window *window = SDL_CreateWindow(
         "MicroSys",
-        SDL_WINDOWPOS_UNDEFINED,
+        SDL_WINDOWPOS_UNDEFINED_DISPLAY(1),
         SDL_WINDOWPOS_UNDEFINED,
         screen_width,
         screen_height,
         0);
 
-    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
+    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
     // Create logs/ directory in case we have traces to put under it
     Verilated::mkdir("logs");
@@ -65,21 +68,18 @@ int main(int argc, char **argv, char **env)
     SDL_Event e;
     bool quit = false;
 
-    auto tp1 = std::chrono::system_clock::now();
-    auto tp2 = std::chrono::system_clock::now();
+    auto tp1 = std::chrono::high_resolution_clock::now();
+    auto tp2 = std::chrono::high_resolution_clock::now();
 
+    unsigned char *pixels = new unsigned char[vga_width * vga_height * 4];
+
+    SDL_Texture *texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STREAMING, vga_width, vga_height);
+
+    bool was_vsync = false;
     while (!contextp->gotFinish() && !quit)
     {
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
         SDL_RenderClear(renderer);
-
-        tp2 = std::chrono::system_clock::now();
-        std::chrono::duration<float> duration = tp2 - tp1;
-        tp1 = tp2;
-        float elapsed_time = duration.count();
-
-        if (contextp->time() % 1000 == 0)
-            std::cout << "Simulation clock frequency: " << 2.0 / elapsed_time << " Hz \n";
 
         while (SDL_PollEvent(&e))
         {
@@ -106,21 +106,55 @@ int main(int argc, char **argv, char **env)
 
         top->eval();
 
-        // Read outputs
-        //VL_PRINTF("[%" VL_PRI64 "d] clk=%x rstl=%x led=%02x\n",
-        //          contextp->time(), top->clk, top->reset_l, top->led);
+        static size_t ii = 0;
 
-        int x = 0;
-        int y = 0;
-        for (int i = 0; i < 8; ++i)
+        if (top->clk)
         {
-            SDL_Rect r{x, y, 50, 50};
-            SDL_SetRenderDrawColor(renderer, 30, (top->led >> (7 - i)) & 1 ? 255 : 30, 10, 30);
-            SDL_RenderFillRect(renderer, &r);
-            x += 60;
+            pixels[ii] = top->red << 4;
+            pixels[ii + 1] = top->green << 4;
+            pixels[ii + 2] = top->blue << 4;
+            pixels[ii + 3] = 255;
+            ii = (ii + 4) % (vga_width * vga_height * 4);
         }
 
-        SDL_RenderPresent(renderer);
+        if (top->reset_l && top->clk && top->vsync && !was_vsync)
+        {
+            was_vsync = true;
+            tp2 = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> duration = tp2 - tp1;
+            tp1 = tp2;
+            double elapsed_time = duration.count();
+
+            std::cout << "FPS: " << 1.0 / elapsed_time << "\n";
+
+            void *p;
+            int pitch;
+            SDL_LockTexture(texture, NULL, &p, &pitch);
+            assert(pitch == vga_width * 4);
+            memcpy(p, pixels, vga_width * vga_height * 4);
+            SDL_UnlockTexture(texture);
+
+            // Read outputs
+            //VL_PRINTF("[%" VL_PRI64 "d] clk=%x rstl=%x led=%02x\n",
+            //          contextp->time(), top->clk, top->reset_l, top->led);
+
+            SDL_RenderCopy(renderer, texture, NULL, NULL);
+
+            int x = 0;
+            int y = 0;
+            for (int i = 0; i < 8; ++i)
+            {
+                SDL_Rect r{x, y, 50, 50};
+                SDL_SetRenderDrawColor(renderer, 30, (top->led >> (7 - i)) & 1 ? 255 : 30, 30, 255);
+                SDL_RenderFillRect(renderer, &r);
+                x += 60;
+            }
+
+            SDL_RenderPresent(renderer);
+        }
+
+        if (!top->vsync)
+            was_vsync = false;
     }
 
     // Final model cleanup
@@ -133,6 +167,10 @@ int main(int argc, char **argv, char **env)
     contextp->coveragep()->write("logs/coverage.dat");
 #endif
 */
+
+    SDL_DestroyTexture(texture);
+
+    delete[] pixels;
 
     SDL_DestroyWindow(window);
     SDL_Quit();
