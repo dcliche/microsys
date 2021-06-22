@@ -1,13 +1,9 @@
 cmake_minimum_required(VERSION 3.12)
 
-add_subdirectory(cpu)
-
-project(top)
+project(cpu)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-find_package(SDL2 REQUIRED COMPONENTS main)
 
 find_package(verilator HINTS $ENV{VERILATOR_ROOT} ${VERILATOR_ROOT})
 if (NOT verilator_FOUND)
@@ -15,10 +11,9 @@ if (NOT verilator_FOUND)
 endif()
 
 # Create a new executable target that will contain all your sources
-add_executable(top sim/sim_main.cpp)
-target_link_libraries(top PRIVATE SDL2)
+add_executable(cpu sim/sim_cpu.cpp)
 
 # Add the Verilated circuit to the target
-verilate(top COVERAGE TRACE
+verilate(cpu COVERAGE TRACE
   INCLUDE_DIRS "./rtl"
-  SOURCES ./rtl/top.sv)
+  SOURCES ./rtl/microaddr.sv ./rtl/microaddr_counter.sv)
