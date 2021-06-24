@@ -16,4 +16,6 @@ add_executable(cpu sim/sim_cpu.cpp)
 # Add the Verilated circuit to the target
 verilate(cpu COVERAGE TRACE
   INCLUDE_DIRS "./rtl"
-  SOURCES ./rtl/microaddr.sv ./rtl/microaddr_counter.sv)
+  SOURCES ./rtl/microaddr_types.sv ./rtl/microaddr_counter.sv
+  PREFIX "Vmicroaddr"
+  TOP_MODULE microaddr_counter)
