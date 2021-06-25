@@ -1,4 +1,4 @@
-#include <SDL2/SDL.h>
+#include <SDL.h>
 
 #include <memory>
 #include <chrono>
@@ -14,6 +14,10 @@ const int screen_height = 600;
 
 const int vga_width = 256;
 const int vga_height = 192;
+
+double sc_time_stamp() {
+    return 0.0;
+}
 
 int main(int argc, char **argv, char **env)
 {
