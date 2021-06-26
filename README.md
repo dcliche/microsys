@@ -8,11 +8,14 @@ None.
 Outputs:
 - 8 LEDs
 
+CPU based on http://labs.domipheus.com/blog/designing-a-cpu-in-vhdl-part-1-rationale-tools-method/
+
 # Requirements
 
 - Verilator (4.205 or above)
 - SDL2
 - Python3
+- Optional: Icarus Verilog (11.0 or above)
 
 # Getting Started
 

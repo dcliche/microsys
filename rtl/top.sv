@@ -10,15 +10,15 @@ module top(
    output logic [3:0] blue
    );
 
-   logic [7:0] cpu_data_in, cpu_data_out;
+   logic [15:0] cpu_data_in, cpu_data_out;
    logic [5:0] addr;
    logic [11:0] mem_addr;
    logic rw;
    logic [7:0] display;
    logic ram_cs;
 
-   ram #(.A(12), .D(8)) ram0(
-      .clk, .cs(ram_cs), .rw, .addr(mem_addr), .data_in(cpu_data_out), .data_out(cpu_data_in)
+   ram #(.A(12), .D(16)) ram0(
+      .clk, .cs(ram_cs), .we(~rw), .addr(mem_addr), .data_in(cpu_data_out), .data_out(cpu_data_in)
    );
 
    vga vga0(
@@ -34,7 +34,6 @@ module top(
       .clk, .reset(~reset_l), .rw, .addr, .data_in(cpu_data_in), .data_out(cpu_data_out)
    );
 
-
    assign led = display;
 
    // Address decoding
@@ -44,7 +43,7 @@ module top(
    always_ff @(posedge clk)
    begin
       if (addr[5] == 1 && rw == 0)
-         display <= cpu_data_out;
+         display <= cpu_data_out[7:0];
    end
 
    // Print some stuff as an example

@@ -20,5 +20,5 @@ target_link_libraries(top PRIVATE ${SDL2_LIBRARY})
 
 # Add the Verilated circuit to the target
 verilate(top COVERAGE TRACE
-  INCLUDE_DIRS "./rtl"
-  SOURCES ./rtl/top.sv)
+  INCLUDE_DIRS "./rtl;./rtl/cpu"
+  SOURCES ./rtl/top.sv ./rtl/cpu/cpu.sv ./rtl/cpu/alu.sv)
