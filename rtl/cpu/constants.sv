@@ -26,3 +26,8 @@
 `define CJF_BNZ         3'b100
 `define CJF_AGB         3'b101
 `define CJF_ALB         3'b110
+
+`define PCU_OP_NOP      2'b00
+`define PCU_OP_INC      2'b01
+`define PCU_OP_ASSIGN   2'b10
+`define PCU_OP_RESET    2'b11
