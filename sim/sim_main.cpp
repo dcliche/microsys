@@ -79,20 +79,10 @@ int main(int argc, char **argv, char **env)
 
     SDL_Texture *texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STREAMING, vga_width, vga_height);
 
+    unsigned int frame_counter = 0;
     bool was_vsync = false;
     while (!contextp->gotFinish() && !quit)
     {
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
-        SDL_RenderClear(renderer);
-
-        while (SDL_PollEvent(&e))
-        {
-            if (e.type == SDL_QUIT)
-            {
-                quit = true;
-            }
-        }
-
         contextp->timeInc(1);
         top->clk = !top->clk;
 
@@ -124,12 +114,27 @@ int main(int argc, char **argv, char **env)
         if (top->reset_l && top->clk && top->vsync && !was_vsync)
         {
             was_vsync = true;
+
+            while (SDL_PollEvent(&e))
+            {
+                if (e.type == SDL_QUIT)
+                {
+                    quit = true;
+                }
+            }
+
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
+            SDL_RenderClear(renderer);
+
             tp2 = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double> duration = tp2 - tp1;
             tp1 = tp2;
             double elapsed_time = duration.count();
 
-            std::cout << "FPS: " << 1.0 / elapsed_time << "\n";
+            if (frame_counter % 100 == 0)
+                std::cout << "FPS: " << 1.0 / elapsed_time << "\n";
+
+            frame_counter++;
 
             void *p;
             int pitch;
