@@ -1,12 +1,15 @@
-A simple computer in System Verilog with a simulator. The top module has the following devices:
+A simple computer in SystemVerilog with a simulator. The top module has the following devices:
 - RAM
 - 8-bit CPU
 
 Inputs:
+- 8 switches (key 1 to 8 to toggle with the simulator)
+- Reset button (hold F1 with the simulator)
 None.
 
 Outputs:
 - 8 LEDs
+- VGA 640x480 display
 
 # Requirements
 

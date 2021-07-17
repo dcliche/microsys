@@ -9,8 +9,10 @@ module ram(input bit clk, input bit cs, input bit rw, input logic [A-1:0] addr, 
         if (cs) begin
             if (rw)
                 data_out <= mem[addr];  // Read
-            else
+            else begin
                 mem[addr] <= data_in;   // Write
+                //$display("ram: write %x to addr %x", data_in, addr);
+            end
         end
     end
 

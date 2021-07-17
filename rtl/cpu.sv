@@ -1,4 +1,4 @@
-module cpu(input bit clk, input bit reset, input logic [7:0] data_in, output logic [7:0] data_out, output logic [5:0] addr, output logic rw);
+module cpu(input logic clk, input logic reset, input logic [7:0] data_in, output logic [7:0] data_out, output logic [5:0] addr, output logic rw);
 
     enum logic [3:0] { reset_state, decode1_state, decode2_state, nor1_state, nor2_state, add1_state, add2_state, sta1_state, sta2_state} state;
     logic [8:0] accu;

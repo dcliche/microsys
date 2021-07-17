@@ -9,11 +9,11 @@
 // Include model header, generated from Verilating "top.v"
 #include "Vtop.h"
 
-const int screen_width = 800;
-const int screen_height = 600;
+const int screen_width = 1024;
+const int screen_height = 768;
 
-const int vga_width = 256;
-const int vga_height = 192;
+const int vga_width = 800;
+const int vga_height = 525;
 
 double sc_time_stamp() {
     return 0.0;
@@ -66,8 +66,9 @@ int main(int argc, char **argv, char **env)
     const std::unique_ptr<Vtop> top{new Vtop{contextp.get(), "TOP"}};
 
     // Set Vtop's input signals
-    top->reset_l = !0;
+    top->reset = 1;
     top->clk = 0;
+    top->sw = 0;
 
     SDL_Event e;
     bool quit = false;
@@ -81,53 +82,95 @@ int main(int argc, char **argv, char **env)
 
     unsigned int frame_counter = 0;
     bool was_vsync = false;
+    auto last_led = top->led;
+
+    size_t pixel_index = 0;
+
+    bool manual_reset = 0;
+
     while (!contextp->gotFinish() && !quit)
     {
+        //SDL_Delay(100);
+        //if (contextp->time() > 500)
+        //    break;
+
         contextp->timeInc(1);
-        top->clk = !top->clk;
-
-        if (!top->clk)
-        {
-            if (contextp->time() > 1 && contextp->time() < 10)
-            {
-                top->reset_l = !1; // Assert reset
-            }
-            else
-            {
-                top->reset_l = !0; // Deassert reset
-            }
-        }
-
+        top->clk = 0;
         top->eval();
-
-        static size_t ii = 0;
-
-        if (top->clk)
+        contextp->timeInc(1);
+        top->clk = 1;
+        if (manual_reset || (contextp->time() > 1 && contextp->time() < 10))
         {
-            pixels[ii] = top->red << 4;
-            pixels[ii + 1] = top->green << 4;
-            pixels[ii + 2] = top->blue << 4;
-            pixels[ii + 3] = 255;
-            ii = (ii + 4) % (vga_width * vga_height * 4);
+            top->reset = 1; // Assert reset
+        }
+        else
+        {
+            top->reset = 0; // Deassert reset
         }
 
-        if (top->reset_l && top->clk && top->vsync && !was_vsync)
-        {
-            was_vsync = true;
+        // Update video display
+        if (was_vsync && top->vga_vsync) {
+            pixel_index = 0;
+            was_vsync = false;
+        }
 
+        pixels[pixel_index] = top->vga_r << 4;
+        pixels[pixel_index + 1] = top->vga_g << 4;
+        pixels[pixel_index + 2] = top->vga_b << 4;
+        pixels[pixel_index + 3] = 255;
+        pixel_index = (pixel_index + 4) % (vga_width * vga_height * 4);
+
+        if (!top->vga_vsync && !was_vsync) {
+            was_vsync = true;
+            void *p;
+            int pitch;
+            SDL_LockTexture(texture, NULL, &p, &pitch);
+            assert(pitch == vga_width * 4);
+            memcpy(p, pixels, vga_width * vga_height * 4);
+            SDL_UnlockTexture(texture);            
+        }
+
+        tp2 = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> duration = tp2 - tp1;
+
+        if (duration.count() >= 1.0/60.0)
+        {
             while (SDL_PollEvent(&e))
             {
                 if (e.type == SDL_QUIT)
                 {
                     quit = true;
+                } else if (e.type == SDL_KEYUP) {
+                    if (e.key.keysym.sym >= SDLK_1 && e.key.keysym.sym <= SDLK_8) {
+                        int i = 7 - (e.key.keysym.sym - SDLK_1);
+                        unsigned char mask = 0x1 << i;
+                        if ((top->sw >> i) & 0x1) {
+                            top->sw &= ~mask;
+                        } else
+                            top->sw |= mask;
+                    } else if (e.key.keysym.sym == SDLK_F1) {
+                        manual_reset = false;
+                        std::cout << "Reset released\n";
+                    }
+                } else if (e.type == SDL_KEYDOWN) {
+                    if (e.key.repeat == 0 && e.key.keysym.sym == SDLK_F1) {
+                        manual_reset = true;
+                        std::cout << "Reset pressed\n";
+                    }
                 }
             }
+
+            int draw_w, draw_h;
+            SDL_GL_GetDrawableSize(window, &draw_w, &draw_h);
+
+            int scale_x, scale_y;
+            scale_x = draw_w / screen_width;
+            scale_y = draw_h / screen_height;
 
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
             SDL_RenderClear(renderer);
 
-            tp2 = std::chrono::high_resolution_clock::now();
-            std::chrono::duration<double> duration = tp2 - tp1;
+            
             tp1 = tp2;
             double elapsed_time = duration.count();
 
@@ -136,25 +179,23 @@ int main(int argc, char **argv, char **env)
 
             frame_counter++;
 
-            void *p;
-            int pitch;
-            SDL_LockTexture(texture, NULL, &p, &pitch);
-            assert(pitch == vga_width * 4);
-            memcpy(p, pixels, vga_width * vga_height * 4);
-            SDL_UnlockTexture(texture);
 
             // Read outputs
             //VL_PRINTF("[%" VL_PRI64 "d] clk=%x rstl=%x led=%02x\n",
             //          contextp->time(), top->clk, top->reset_l, top->led);
 
-            SDL_RenderCopy(renderer, texture, NULL, NULL);
+            SDL_Rect vga_r = {0, scale_x * (screen_height - vga_height - 1), scale_x * vga_width, scale_y * vga_height};
+            SDL_RenderCopy(renderer, texture, NULL, &vga_r);
 
             int x = 0;
             int y = 0;
-            for (int i = 0; i < 8; ++i)
+            for (int i = 7; i >= 0; --i)
             {
-                SDL_Rect r{x, y, 50, 50};
-                SDL_SetRenderDrawColor(renderer, 30, (top->led >> (7 - i)) & 1 ? 255 : 30, 30, 255);
+                SDL_Rect r{scale_x * x, scale_y * y, scale_x * 50, scale_y * 50};
+                SDL_SetRenderDrawColor(renderer, 30, (top->led >> i) & 1 ? 255 : 30, 30, 255);
+                SDL_RenderFillRect(renderer, &r);
+                r.y += scale_y * 60;
+                SDL_SetRenderDrawColor(renderer, (top->sw >> i) & 1 ? 255 : 30, 30, 30, 255);
                 SDL_RenderFillRect(renderer, &r);
                 x += 60;
             }
@@ -162,8 +203,7 @@ int main(int argc, char **argv, char **env)
             SDL_RenderPresent(renderer);
         }
 
-        if (!top->vsync)
-            was_vsync = false;
+        top->eval();
     }
 
     // Final model cleanup
