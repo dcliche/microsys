@@ -33,9 +33,38 @@ module top(
       .de
    );
 
-   // 32 x 32 pixel square
+   //
+   // Bouncing square
+   //
+
+   localparam H_RES_FULL = 800;
+   localparam V_RES_FULL = 525;
+   localparam H_RES = 640;
+   localparam V_RES = 480;
+
+   logic animate;
+   always_comb animate = (sy == V_RES && sx == 0);
+
+   localparam Q_SIZE = 32;
+   localparam Q_SPEED = 4;
+   logic[CORDW-1:0] qx, qy;
+
+   always_ff @(posedge clk_pix) begin
+      if (animate) begin
+         if (qx >= H_RES_FULL - Q_SIZE) begin
+            qx <= 0;
+            qy <= (qy >= V_RES_FULL - Q_SIZE) ? 0 : qy + Q_SIZE;         
+         end else begin
+            qx <= qx + Q_SPEED;
+         end
+      end
+   end
+
    logic q_draw;
-   always_comb q_draw = (sx < 32 && sy < 32) ? 1 : 0;
+   always_comb begin
+      q_draw = (sx >= qx) && (sx < qx + Q_SIZE) &&
+               (sy >= qy) && (sy < qy + Q_SIZE);
+   end
 
    // VGA output
    always_ff @(posedge clk_pix) begin

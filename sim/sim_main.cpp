@@ -73,8 +73,10 @@ int main(int argc, char **argv, char **env)
     SDL_Event e;
     bool quit = false;
 
-    auto tp1 = std::chrono::high_resolution_clock::now();
-    auto tp2 = std::chrono::high_resolution_clock::now();
+    auto tp_frame = std::chrono::high_resolution_clock::now();
+    auto tp_clk = std::chrono::high_resolution_clock::now();
+    auto tp_now = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> duration_clk;
 
     unsigned char *pixels = new unsigned char[vga_width * vga_height * 4];
 
@@ -130,10 +132,15 @@ int main(int argc, char **argv, char **env)
             SDL_UnlockTexture(texture);            
         }
 
-        tp2 = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> duration = tp2 - tp1;
+        tp_now = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> duration_frame = tp_now - tp_frame;
 
-        if (duration.count() >= 1.0/60.0)
+        if (contextp->time() % 2000000 == 0) {
+            duration_clk = tp_now - tp_clk;
+            tp_clk = tp_now;
+        }
+
+        if (duration_frame.count() >= 1.0/60.0)
         {
             while (SDL_PollEvent(&e))
             {
@@ -170,15 +177,12 @@ int main(int argc, char **argv, char **env)
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
             SDL_RenderClear(renderer);
 
-            
-            tp1 = tp2;
-            double elapsed_time = duration.count();
+            if (frame_counter % 100 == 0) {
+                std::cout << "Clk speed: " << 1.0 / (duration_clk.count()) << " MHz\n";
+            }
 
-            if (frame_counter % 100 == 0)
-                std::cout << "FPS: " << 1.0 / elapsed_time << "\n";
-
+            tp_frame = tp_now;
             frame_counter++;
-
 
             // Read outputs
             //VL_PRINTF("[%" VL_PRI64 "d] clk=%x rstl=%x led=%02x\n",
