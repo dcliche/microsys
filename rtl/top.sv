@@ -3,6 +3,9 @@ module top(
    input reset,
 
    input logic [7:0] sw,
+   input logic btn_up,
+   input logic btn_ctrl,
+   input logic btn_dn,
    output logic [7:0] led,
    output logic vga_hsync,
    output logic vga_vsync,
@@ -17,6 +20,12 @@ module top(
    // TODO: use a display clock at 25.2 MHz
    assign clk_pix = clk;
    assign clk_locked = 1;
+
+   // debounce buttons
+   logic sig_ctrl, move_up, move_dn;
+   debounce deb_ctrl(.clk(clk_pix), .in(btn_ctrl), .out(), .ondn(), .onup(sig_ctrl));
+   debounce deb_up(.clk(clk_pix), .in(btn_up), .out(move_up), .ondn(), .onup());
+   debounce deb_dn(.clk(clk_pix), .in(btn_dn), .out(move_dn), .ondn(), .onup());
 
    // display timings
    localparam CORDW = 10;  // screen coordinate width in bits
@@ -37,6 +46,8 @@ module top(
    // Pong
    // Ref.: https://projectf.io/posts/fpga-pong/
    //
+
+   enum {IDLE, PLAY} state, state_next;
 
    // size of the screen with and without blanking
    localparam H_RES_FULL = 800;
@@ -102,13 +113,20 @@ module top(
    // paddle animation
    always_ff @(posedge clk_pix) begin
       if (animate) begin
-         // "AI" paddle 1
-         if ((p1y + P_H/2) + P_SP/2 < (by + B_SIZE/2)) begin
-            if (p1y < V_RES - (P_H + P_SP/2))   // screen bottom?
-               p1y <= p1y + P_SP;               // move down
-         end else if ((p1y + P_H/2) > (by + B_SIZE/2) + P_SP/2) begin
-            if (p1y > P_SP)                     // screen top?
-               p1y <= p1y - P_SP;               // move up
+         if (state == PLAY) begin   // human paddle 1
+            if (move_up)
+               if (p1y > P_SP) p1y <= p1y - P_SP;
+            if (move_dn)
+               if (p1y < V_RES - (P_H + P_SP)) p1y <= p1y + P_SP; 
+         end else begin
+            // "AI" paddle 1
+            if ((p1y + P_H/2) + P_SP/2 < (by + B_SIZE/2)) begin
+               if (p1y < V_RES - (P_H + P_SP/2))   // screen bottom?
+                  p1y <= p1y + P_SP;               // move down
+            end else if ((p1y + P_H/2) > (by + B_SIZE/2) + P_SP/2) begin
+               if (p1y > P_SP)                     // screen top?
+                  p1y <= p1y - P_SP;               // move up
+            end
          end
 
          // "AI" paddle 2
@@ -148,6 +166,19 @@ module top(
       vga_r <= (de && (b_draw || p1_draw || p2_draw)) ? 4'hF : 4'h0;
       vga_g <= (de && (b_draw || p1_draw || p2_draw)) ? 4'hF : 4'h0;
       vga_b <= (de && (b_draw || p1_draw || p2_draw)) ? 4'hF : 4'h0;
+   end
+
+   // game state
+   always_comb begin
+      case (state)
+         IDLE: state_next = (sig_ctrl) ? PLAY : IDLE;
+         PLAY: state_next = (sig_ctrl) ? IDLE : PLAY;
+         default: state_next = IDLE;
+      endcase
+   end
+
+   always_ff @(posedge clk_pix) begin
+      state <= state_next;
    end
 
    //

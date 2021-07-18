@@ -5,7 +5,8 @@ A simple computer in SystemVerilog with a simulator. The top module has the foll
 Inputs:
 - 8 switches (key 1 to 8 to toggle with the simulator)
 - Reset button (hold F1 with the simulator)
-None.
+- Up and down buttons
+- Control button (TAB key with the simulator)
 
 Outputs:
 - 8 LEDs

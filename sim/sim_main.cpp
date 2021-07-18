@@ -156,14 +156,43 @@ int main(int argc, char **argv, char **env)
                             top->sw &= ~mask;
                         } else
                             top->sw |= mask;
-                    } else if (e.key.keysym.sym == SDLK_F1) {
-                        manual_reset = false;
-                        std::cout << "Reset released\n";
+                    } else {
+                        switch(e.key.keysym.sym) {
+                            case SDLK_F1:
+                                manual_reset = false;
+                                std::cout << "Reset released\n";
+                                break;
+                            case SDLK_UP:
+                                top->btn_up = 0;
+                                break;
+                            case SDLK_DOWN:
+                                top->btn_dn = 0;
+                                break;
+                            case SDLK_TAB:
+                                top->btn_ctrl = 0;
+                                std::cout << "Ctrl released\n";
+                                break;
+                        }
+                        
                     }
                 } else if (e.type == SDL_KEYDOWN) {
-                    if (e.key.repeat == 0 && e.key.keysym.sym == SDLK_F1) {
-                        manual_reset = true;
-                        std::cout << "Reset pressed\n";
+                    if (e.key.repeat == 0) {
+                        switch(e.key.keysym.sym) {
+                            case SDLK_F1:
+                                manual_reset = true;
+                                std::cout << "Reset pressed\n";
+                                break;
+                            case SDLK_UP:
+                                top->btn_up = 1;
+                                break;
+                            case SDLK_DOWN:
+                                top->btn_dn = 1;
+                                break;
+                            case SDLK_TAB:
+                                top->btn_ctrl = 1;
+                                std::cout << "Ctrl pressed\n";
+                                break;
+                        }
                     }
                 }
             }
