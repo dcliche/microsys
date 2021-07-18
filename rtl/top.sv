@@ -47,7 +47,20 @@ module top(
    // Ref.: https://projectf.io/posts/fpga-pong/
    //
 
-   enum {IDLE, PLAY} state, state_next;
+   logic lft_col, rgt_col;
+
+   // game state
+   enum {INIT, IDLE, START, PLAY, POINT_END} state, state_next;
+   always_comb begin
+      case (state)
+         INIT: state_next = IDLE;
+         IDLE: state_next = (sig_ctrl) ? START : IDLE;
+         START: state_next = (sig_ctrl) ? PLAY : START;
+         PLAY: state_next = (lft_col || rgt_col) ? POINT_END : PLAY;
+         POINT_END: state_next = (sig_ctrl) ? START : POINT_END;
+         default: state_next = IDLE;
+      endcase
+   end
 
    // size of the screen with and without blanking
    localparam H_RES_FULL = 800;
@@ -69,7 +82,14 @@ module top(
 
    // ball animation
    always_ff @(posedge clk_pix) begin
-      if (animate) begin
+      if (state == INIT || state == START) begin            // reset ball position
+         bx <= (H_RES - B_SIZE) >> 1;
+         by <= (V_RES - B_SIZE) >> 1;
+         dx <= 0; // serve towards player 2 (AI)
+         dy <= ~dy;
+         lft_col <= 0;
+         rgt_col <= 0;
+      end else if (animate && state != POINT_END) begin
          // Horizontal
          if (p1_col) begin                                  // left paddle collision
             dx <= 0;
@@ -78,11 +98,9 @@ module top(
             dx <= 1;
             bx <= bx - spx;
          end else if (bx >= H_RES - (spx + B_SIZE)) begin   // right edge
-            dx <= 1;
-            bx <= bx - spx;
+            rgt_col <= 1;
          end else if (bx < spx) begin                       // left edge
-            dx <= 0;
-            bx <= bx + spx;
+            lft_col <= 1;
          end else bx <= (dx) ? bx - spx : bx + spx;
 
          // Vertical
@@ -112,7 +130,10 @@ module top(
 
    // paddle animation
    always_ff @(posedge clk_pix) begin
-      if (animate) begin
+      if (state == INIT || state == START) begin  // reset paddle position
+         p1y <= (V_RES - P_H) >> 1;
+         p2y <= (V_RES - P_H) >> 1;
+      end else if (animate && state != POINT_END) begin
          if (state == PLAY) begin   // human paddle 1
             if (move_up)
                if (p1y > P_SP) p1y <= p1y - P_SP;
@@ -166,15 +187,6 @@ module top(
       vga_r <= (de && (b_draw || p1_draw || p2_draw)) ? 4'hF : 4'h0;
       vga_g <= (de && (b_draw || p1_draw || p2_draw)) ? 4'hF : 4'h0;
       vga_b <= (de && (b_draw || p1_draw || p2_draw)) ? 4'hF : 4'h0;
-   end
-
-   // game state
-   always_comb begin
-      case (state)
-         IDLE: state_next = (sig_ctrl) ? PLAY : IDLE;
-         PLAY: state_next = (sig_ctrl) ? IDLE : PLAY;
-         default: state_next = IDLE;
-      endcase
    end
 
    always_ff @(posedge clk_pix) begin
