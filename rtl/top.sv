@@ -17,9 +17,13 @@ module top(
    logic clk_pix;
    logic clk_locked;
 
-   // TODO: use a display clock at 25.2 MHz
+`ifdef verilator
    assign clk_pix = clk;
    assign clk_locked = 1;
+`else
+   pll pll_inst(.clkref(clk), .clkout(clk_pix));
+   assign clk_locked = 1;
+`endif
 
    // debounce buttons
    logic sig_ctrl, move_up, move_dn;
@@ -224,7 +228,7 @@ module top(
    logic [7:0] cpu_data_in, cpu_data_out;
    logic [5:0] addr;
    logic [11:0] mem_addr;
-   logic rw = 1;
+   logic rw;
    logic [7:0] display;
    logic ram_cs;
 

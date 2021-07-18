@@ -61,7 +61,7 @@ module cpu(input logic clk, input logic reset, input logic [7:0] data_in, output
                     state <= nor2_state;
 
                 nor2_state: begin
-                    accu[7:0] <= accu[7:0] ~| data_in;
+                    accu[7:0] <= ~(accu[7:0] | data_in);
                     pc <= pc + 1;
                     addr <= pc + 1;
                     state <= decode1_state;
