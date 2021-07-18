@@ -19,6 +19,7 @@ target_include_directories(top PRIVATE ${SDL2_INCLUDE_DIR})
 target_link_libraries(top PRIVATE ${SDL2_LIBRARY})
 
 # Add the Verilated circuit to the target
-verilate(top COVERAGE TRACE
+verilate(top TRACE
+  OPT_FAST
   INCLUDE_DIRS "./rtl"
   SOURCES ./rtl/top.sv)

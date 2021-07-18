@@ -51,7 +51,7 @@ int main(int argc, char **argv, char **env)
 
     // Randomization reset policy
     // May be overridden by commandArgs argument parsing
-    contextp->randReset(2);
+    contextp->randReset(0);
 
     // Verilator must compute traced signals
     contextp->traceEverOn(true);
@@ -78,7 +78,8 @@ int main(int argc, char **argv, char **env)
     auto tp_now = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration_clk;
 
-    unsigned char *pixels = new unsigned char[vga_width * vga_height * 4];
+    const size_t pixels_size = vga_width * vga_height * 4;
+    unsigned char *pixels = new unsigned char[pixels_size];
 
     SDL_Texture *texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STREAMING, vga_width, vga_height);
 
@@ -120,7 +121,7 @@ int main(int argc, char **argv, char **env)
         pixels[pixel_index + 1] = top->vga_g << 4;
         pixels[pixel_index + 2] = top->vga_b << 4;
         pixels[pixel_index + 3] = 255;
-        pixel_index = (pixel_index + 4) % (vga_width * vga_height * 4);
+        pixel_index = (pixel_index + 4) % (pixels_size);
 
         if (!top->vga_vsync && !was_vsync) {
             was_vsync = true;
@@ -212,14 +213,6 @@ int main(int argc, char **argv, char **env)
 
     // Final model cleanup
     top->final();
-
-    /*
-    // Coverage analysis (calling write only after the test is known to pass)
-#if VM_COVERAGE
-    Verilated::mkdir("logs");
-    contextp->coveragep()->write("logs/coverage.dat");
-#endif
-*/
 
     SDL_DestroyTexture(texture);
 
