@@ -94,9 +94,11 @@ module top(
          if (p1_col) begin                                  // left paddle collision
             dx <= 0;
             bx <= bx + spx;
+            dy <= (by + B_SIZE/2 < p1y + P_H/2) ? 1 : 0;
          end else if (p2_col) begin                         // right paddle collision
             dx <= 1;
             bx <= bx - spx;
+            dy <= (by + B_SIZE/2 < p2y + P_H/2) ? 1 : 0;
          end else if (bx >= H_RES - (spx + B_SIZE)) begin   // right edge
             rgt_col <= 1;
          end else if (bx < spx) begin                       // left edge
@@ -113,6 +115,27 @@ module top(
          end else by <= (dy) ? by - spy : by + spy;
       end
    end
+
+   // ball speed control
+   localparam SPEED_STEP = 5;    // speed up after this many collisions
+   logic [$clog2(SPEED_STEP)-1:0] cnt_sp; // speed counter
+   always_ff @(posedge clk_pix) begin
+      if (state == INIT) begin   // demo speed
+         spx <= 6;
+         spy <= 4;
+      end else if (state == START) begin // initial game speed
+         spx <= 4;
+         spx <= 2;         
+      end else if (state == PLAY && animate && (p1_col || p2_col)) begin
+         if (cnt_sp == SPEED_STEP - 1) begin
+            spx <= spx + 1;
+            spy <= spy + 1;
+            cnt_sp <= 0;
+         end else begin
+            cnt_sp <= cnt_sp + 1;
+         end
+      end
+   end   
 
    // draw ball - is ball at current screen position?
    always_comb begin
