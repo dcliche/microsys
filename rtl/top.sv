@@ -125,7 +125,8 @@ module top(
          spy <= 4;
       end else if (state == START) begin // initial game speed
          spx <= 4;
-         spx <= 2;         
+         spy <= 2;
+         cnt_sp <= 0;
       end else if (state == PLAY && animate && (p1_col || p2_col)) begin
          if (cnt_sp == SPEED_STEP - 1) begin
             spx <= spx + 1;
