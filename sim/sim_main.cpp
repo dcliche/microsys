@@ -15,7 +15,8 @@ const int screen_height = 768;
 const int vga_width = 800;
 const int vga_height = 525;
 
-double sc_time_stamp() {
+double sc_time_stamp()
+{
     return 0.0;
 }
 
@@ -112,7 +113,8 @@ int main(int argc, char **argv, char **env)
         }
 
         // Update video display
-        if (was_vsync && top->vga_vsync) {
+        if (was_vsync && top->vga_vsync)
+        {
             pixel_index = 0;
             was_vsync = false;
         }
@@ -123,75 +125,88 @@ int main(int argc, char **argv, char **env)
         pixels[pixel_index + 3] = 255;
         pixel_index = (pixel_index + 4) % (pixels_size);
 
-        if (!top->vga_vsync && !was_vsync) {
+        if (!top->vga_vsync && !was_vsync)
+        {
             was_vsync = true;
             void *p;
             int pitch;
             SDL_LockTexture(texture, NULL, &p, &pitch);
             assert(pitch == vga_width * 4);
             memcpy(p, pixels, vga_width * vga_height * 4);
-            SDL_UnlockTexture(texture);            
+            SDL_UnlockTexture(texture);
         }
 
         tp_now = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration_frame = tp_now - tp_frame;
 
-        if (contextp->time() % 2000000 == 0) {
+        if (contextp->time() % 2000000 == 0)
+        {
             duration_clk = tp_now - tp_clk;
             tp_clk = tp_now;
         }
 
-        if (duration_frame.count() >= 1.0/60.0)
+        if (duration_frame.count() >= 1.0 / 60.0)
         {
             while (SDL_PollEvent(&e))
             {
                 if (e.type == SDL_QUIT)
                 {
                     quit = true;
-                } else if (e.type == SDL_KEYUP) {
-                    if (e.key.keysym.sym >= SDLK_1 && e.key.keysym.sym <= SDLK_8) {
-                        int i = 7 - (e.key.keysym.sym - SDLK_1);
+                }
+                else if (e.type == SDL_KEYUP)
+                {
+                    if (e.key.keysym.sym >= SDLK_1 && e.key.keysym.sym <= SDLK_4)
+                    {
+                        int i = 3 - (e.key.keysym.sym - SDLK_1);
                         unsigned char mask = 0x1 << i;
-                        if ((top->sw >> i) & 0x1) {
+                        if ((top->sw >> i) & 0x1)
+                        {
                             top->sw &= ~mask;
-                        } else
-                            top->sw |= mask;
-                    } else {
-                        switch(e.key.keysym.sym) {
-                            case SDLK_F1:
-                                manual_reset = false;
-                                std::cout << "Reset released\n";
-                                break;
-                            case SDLK_UP:
-                                top->btn_up = 0;
-                                break;
-                            case SDLK_DOWN:
-                                top->btn_dn = 0;
-                                break;
-                            case SDLK_TAB:
-                                top->btn_ctrl = 0;
-                                std::cout << "Ctrl released\n";
-                                break;
                         }
-                        
+                        else
+                            top->sw |= mask;
                     }
-                } else if (e.type == SDL_KEYDOWN) {
-                    if (e.key.repeat == 0) {
-                        switch(e.key.keysym.sym) {
-                            case SDLK_F1:
-                                manual_reset = true;
-                                std::cout << "Reset pressed\n";
-                                break;
-                            case SDLK_UP:
-                                top->btn_up = 1;
-                                break;
-                            case SDLK_DOWN:
-                                top->btn_dn = 1;
-                                break;
-                            case SDLK_TAB:
-                                top->btn_ctrl = 1;
-                                std::cout << "Ctrl pressed\n";
-                                break;
+                    else
+                    {
+                        switch (e.key.keysym.sym)
+                        {
+                        case SDLK_F1:
+                            manual_reset = false;
+                            std::cout << "Reset released\n";
+                            break;
+                        case SDLK_UP:
+                            top->btn_up = 0;
+                            break;
+                        case SDLK_DOWN:
+                            top->btn_dn = 0;
+                            break;
+                        case SDLK_TAB:
+                            top->btn_ctrl = 0;
+                            std::cout << "Ctrl released\n";
+                            break;
+                        }
+                    }
+                }
+                else if (e.type == SDL_KEYDOWN)
+                {
+                    if (e.key.repeat == 0)
+                    {
+                        switch (e.key.keysym.sym)
+                        {
+                        case SDLK_F1:
+                            manual_reset = true;
+                            std::cout << "Reset pressed\n";
+                            break;
+                        case SDLK_UP:
+                            top->btn_up = 1;
+                            break;
+                        case SDLK_DOWN:
+                            top->btn_dn = 1;
+                            break;
+                        case SDLK_TAB:
+                            top->btn_ctrl = 1;
+                            std::cout << "Ctrl pressed\n";
+                            break;
                         }
                     }
                 }
@@ -207,7 +222,8 @@ int main(int argc, char **argv, char **env)
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
             SDL_RenderClear(renderer);
 
-            if (frame_counter % 100 == 0) {
+            if (frame_counter % 100 == 0)
+            {
                 std::cout << "Clk speed: " << 1.0 / (duration_clk.count()) << " MHz\n";
             }
 
@@ -223,7 +239,7 @@ int main(int argc, char **argv, char **env)
 
             int x = 0;
             int y = 0;
-            for (int i = 7; i >= 0; --i)
+            for (int i = 3; i >= 0; --i)
             {
                 SDL_Rect r{scale_x * x, scale_y * y, scale_x * 50, scale_y * 50};
                 SDL_SetRenderDrawColor(renderer, 30, (top->led >> i) & 1 ? 255 : 30, 30, 255);

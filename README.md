@@ -3,13 +3,13 @@ A simple computer in SystemVerilog with a simulator. The top module has the foll
 - 8-bit CPU
 
 Inputs:
-- 8 switches (key 1 to 8 to toggle with the simulator)
+- 4 switches (key 1 to 4 to toggle with the simulator)
 - Reset button (hold F1 with the simulator)
 - Up and down buttons
 - Control button (TAB key with the simulator)
 
 Outputs:
-- 8 LEDs
+- 4 LEDs
 - VGA 640x480 display
 
 # Requirements

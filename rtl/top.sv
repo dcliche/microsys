@@ -2,11 +2,11 @@ module top(
    input clk,
    input reset,
 
-   input logic [7:0] sw,
+   input logic [3:0] sw,
    input logic btn_up,
    input logic btn_ctrl,
    input logic btn_dn,
-   output logic [7:0] led,
+   output logic [3:0] led,
    output logic vga_hsync,
    output logic vga_vsync,
    output logic [3:0] vga_r,
@@ -237,7 +237,7 @@ module top(
    );
 
 
-   assign led = display;
+   assign led = display[3:0];
 
    // Address decoding
    assign mem_addr = {6'b000000, addr};
