@@ -51,27 +51,34 @@ module top(
    localparam B_SIZE = 8;     // size in pixels
    logic [CORDW-1:0] bx, by;  // position
    logic dx, dy;              // direction: 0 is right/down
-   logic [CORDW-1:0] spx = 1; // horizontal speed
-   logic [CORDW-1:0] spy = 1; // vertical speed
+   logic [CORDW-1:0] spx = 6; // horizontal speed
+   logic [CORDW-1:0] spy = 4; // vertical speed
    logic b_draw;              // draw ball?
+   logic p1_col, p2_col;      // paddle collision
 
    // ball animation
    always_ff @(posedge clk_pix) begin
       if (animate) begin
          // Horizontal
-         if (bx >= H_RES - (spx + B_SIZE)) begin   // right edge
+         if (p1_col) begin                                  // left paddle collision
+            dx <= 0;
+            bx <= bx + spx;
+         end else if (p2_col) begin                         // right paddle collision
             dx <= 1;
             bx <= bx - spx;
-         end else if (bx < spx) begin  // left edge
+         end else if (bx >= H_RES - (spx + B_SIZE)) begin   // right edge
+            dx <= 1;
+            bx <= bx - spx;
+         end else if (bx < spx) begin                       // left edge
             dx <= 0;
             bx <= bx + spx;
          end else bx <= (dx) ? bx - spx : bx + spx;
 
          // Vertical
-         if (by >= V_RES - (spy + B_SIZE)) begin   // bottom edge
+         if (by >= V_RES - (spy + B_SIZE)) begin            // bottom edge
             dy <= 1;
             by <= by - spy;
-         end else if (by < spy) begin  // top edge
+      end else if (by < spy) begin                          // top edge
             dy <= 0;
             by <= by + spy;
          end else by <= (dy) ? by - spy : by + spy;
@@ -87,7 +94,7 @@ module top(
    // paddles
    localparam P_H = 40;          // height in pixels
    localparam P_W = 10;          // width in pixels
-   localparam P_SP = 1;          // speed
+   localparam P_SP = 4;          // speed
    localparam P_OFFS = 32;       // offset from screen edge
    logic [CORDW-1:0] p1y, p2y;   // vertical position of paddles 1 and 2
    logic p1_draw, p2_draw;       // draw paddles?
@@ -121,6 +128,17 @@ module top(
                 (sy >= p1y) && (sy < p1y + P_H);
       p2_draw = (sx >= H_RES - P_OFFS - P_W) && (sx < H_RES - P_OFFS) &&
                 (sy >= p2y) && (sy < p2y + P_H);
+   end
+
+   // paddle collision detection
+   always_ff @(posedge clk_pix) begin
+      if (animate) begin
+         p1_col <= 0;
+         p2_col <= 0;
+      end else if (b_draw) begin
+         if (p1_draw) p1_col <= 1;
+         if (p2_draw) p2_col <= 1;
+      end
    end
 
    // VGA output
