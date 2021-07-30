@@ -23,3 +23,6 @@ verilate(top TRACE
   OPT_FAST
   INCLUDE_DIRS "./rtl"
   SOURCES ./rtl/top.sv)
+
+  configure_file(${CMAKE_SOURCE_DIR}/data/letter_f.mem ${CMAKE_CURRENT_BINARY_DIR}/letter_f.mem COPYONLY)
+  configure_file(${CMAKE_SOURCE_DIR}/data/saucer.mem ${CMAKE_CURRENT_BINARY_DIR}/saucer.mem COPYONLY)

@@ -1,3 +1,22 @@
+/*
+
+Ref.: https://projectf.io
+
+640x480 Timings     HOR    VER
+-------------------------------
+Active Pixels       640     480
+Front Porch         16      10
+Sync Width          96      2
+Back Porch          48      33
+Blanking Total      160     45
+Total Pixels        800     525
+Sync Polarity       neg     neg
+
+Pixel Clock @60Hz: 25.2 MHz
+
+*/
+
+
 module top(
    input clk,
    input reset,
@@ -17,6 +36,9 @@ module top(
    logic clk_pix;
    logic clk_locked;
 
+   logic [3:0] pong_vga_r, pong_vga_g, pong_vga_b;
+   logic [3:0] sprite_vga_r, sprite_vga_g, sprite_vga_b;
+
 `ifdef verilator
    assign clk_pix = clk;
    assign clk_locked = 1;
@@ -32,19 +54,24 @@ module top(
    debounce deb_dn(.clk(clk_pix), .in(btn_dn), .out(move_dn), .ondn(), .onup());
 
    // display timings
-   localparam CORDW = 10;  // screen coordinate width in bits
-   logic hsync, vsync, de;
-   logic [CORDW-1:0] sx, sy;
-
-   simple_display_timings_480p display_timings_inst(
-      .clk_pix,
-      .rst(!clk_locked),
-      .sx,
-      .sy,
-      .hsync,
-      .vsync,
-      .de
-   );
+   localparam CORDW = 16;
+   logic signed [CORDW-1:0] sx, sy;
+   logic hsync, vsync;
+   logic de, line;
+   logic frame;
+   display_timings_480p #(.CORDW(CORDW)) display_timings_inst (
+        .clk_pix,
+        .rst(!clk_locked),  // wait for pixel clock lock
+        .sx,
+        .sy,
+        .hsync,
+        .vsync,
+        .de,
+        /* verilator lint_off PINCONNECTEMPTY */
+        .frame,
+        /* verilator lint_on PINCONNECTEMPTY */
+        .line
+    );
 
    //
    // Pong
@@ -72,8 +99,8 @@ module top(
    localparam H_RES = 640;
    localparam V_RES = 480;
 
-   logic animate; // high for one clock ticj at the start of vertical blanking
-   always_comb animate = (sy == V_RES && sx == 0);
+   logic animate; // high for one clock tick at the start of vertical blanking
+   always_comb animate = frame;
 
    // ball
    localparam B_SIZE = 8;     // size in pixels
@@ -208,18 +235,67 @@ module top(
       end
    end
 
-   // VGA output
+   // Output
    always_ff @(posedge clk_pix) begin
-      vga_hsync <= hsync;
-      vga_vsync <= vsync;
-      vga_r <= (de && (b_draw || p1_draw || p2_draw)) ? 4'hF : 4'h0;
-      vga_g <= (de && (b_draw || p1_draw || p2_draw)) ? 4'hF : 4'h0;
-      vga_b <= (de && (b_draw || p1_draw || p2_draw)) ? 4'hF : 4'h0;
+      pong_vga_r <= (de && (b_draw || p1_draw || p2_draw)) ? 4'hF : 4'h0;
+      pong_vga_g <= (de && (b_draw || p1_draw || p2_draw)) ? 4'hF : 4'h0;
+      pong_vga_b <= (de && (b_draw || p1_draw || p2_draw)) ? 4'hF : 4'h0;
    end
 
    always_ff @(posedge clk_pix) begin
       state <= state_next;
    end
+
+   //
+   // sprite
+   //
+
+    localparam SPR_WIDTH  = 8;  // width in pixels
+    localparam SPR_HEIGHT = 8;  // number of lines
+    localparam SPR_FILE = "saucer.mem";
+    logic spr_start;
+    logic spr_pix;
+
+    // draw sprite at position
+    localparam DRAW_X = 16;
+    localparam DRAW_Y = 16;
+
+    // signal to start sprite drawing
+    always_comb spr_start = (line && sy == DRAW_Y);
+
+    sprite #(
+        .WIDTH(SPR_WIDTH),
+        .HEIGHT(SPR_HEIGHT),
+        .SCALE_X(4),
+        .SCALE_Y(4),
+        .SPR_FILE(SPR_FILE)
+    ) spr_instance (
+        .clk(clk_pix),
+        .rst(!clk_locked),
+        .start(spr_start),
+        .sx,
+        .sprx(DRAW_X),
+        .pix(spr_pix)
+    );
+
+    // Output
+    always_ff @(posedge clk_pix) begin
+        sprite_vga_r <= (de && spr_pix) ? 4'hF: 4'h0;
+        sprite_vga_g <= (de && spr_pix) ? 4'hC: 4'h0;
+        sprite_vga_b <= (de && spr_pix) ? 4'h0: 4'h0;
+    end
+
+    //
+    // VGA output
+    //
+
+    always_ff @(posedge clk_pix) begin
+        vga_hsync <= hsync;
+        vga_vsync <= vsync;
+        vga_r <= pong_vga_r | sprite_vga_r;
+        vga_g <= pong_vga_g | sprite_vga_g;
+        vga_b <= pong_vga_b | sprite_vga_b;
+    end
 
    //
    // CPU
