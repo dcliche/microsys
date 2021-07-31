@@ -25,13 +25,13 @@ verilate(top TRACE
   SOURCES
     ./rtl/top.sv
     external/projf-explore/lib/essential/debounce.sv
-    external/projf-explore/lib/memory/rom_async.sv    
+    external/projf-explore/lib/memory/rom_sync.sv
+    external/projf-explore/lib/memory/rom_async.sv
     external/projf-explore/lib/display/display_timings_480p.sv
-    external/projf-explore/graphics/hardware-sprites/sprite_v2.sv
+    external/projf-explore/graphics/hardware-sprites/sprite.sv
   VERILATOR_ARGS
     "-Wno-WIDTH"
   )
 
-configure_file(${CMAKE_SOURCE_DIR}/data/letter_f.mem ${CMAKE_CURRENT_BINARY_DIR}/letter_f.mem COPYONLY)
-configure_file(${CMAKE_SOURCE_DIR}/data/saucer.mem ${CMAKE_CURRENT_BINARY_DIR}/saucer.mem COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/data/hedgehog.mem ${CMAKE_CURRENT_BINARY_DIR}/hedgehog.mem COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/data/hedgehog_palette.mem ${CMAKE_CURRENT_BINARY_DIR}/hedgehog_palette.mem COPYONLY)

@@ -5,7 +5,6 @@ Uses the libraries from Project F (https://projectf.io/).
 The top module has the following devices:
 - RAM
 - 8-bit CPU
-- Pong module
 - Sprite
 
 Inputs:
@@ -31,7 +30,7 @@ The procedure to compile and start the simulator is the following:
 - Clone the repository with the `recurse-submodules` flag:
 ```bash
 git clone --recurse-submodules https://github.com/dcliche/microsys.git
-cd tvge
+cd microsys
 ```
 Note: if the repository was cloned non-recursively previously, use `git submodule update --init` to clone the necessary submodules.
 
