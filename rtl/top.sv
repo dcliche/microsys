@@ -16,6 +16,7 @@ Pixel Clock @60Hz: 25.2 MHz
 
 */
 
+`timescale 1ns / 1ps
 
 module top(
    input clk,
@@ -263,7 +264,7 @@ module top(
     // signal to start sprite drawing
     always_comb spr_start = (line && sy == DRAW_Y);
 
-    sprite #(
+    sprite_v2 #(
         .WIDTH(SPR_WIDTH),
         .HEIGHT(SPR_HEIGHT),
         .SCALE_X(4),

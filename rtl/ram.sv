@@ -1,3 +1,5 @@
+`timescale 1ns / 1ps
+
 module ram(input bit clk, input bit cs, input bit rw, input logic [A-1:0] addr, input logic [D-1:0] data_in, output logic [D-1:0] data_out);
     parameter A = 10, D = 8;
 

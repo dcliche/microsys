@@ -1,0 +1,3 @@
+[submodule "external/projf-explore"]
+	path = external/projf-explore
+	url = git@github.com:dcliche/projf-explore.git

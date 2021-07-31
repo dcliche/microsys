@@ -22,7 +22,16 @@ target_link_libraries(top PRIVATE ${SDL2_LIBRARY})
 verilate(top TRACE
   OPT_FAST
   INCLUDE_DIRS "./rtl"
-  SOURCES ./rtl/top.sv)
+  SOURCES
+    ./rtl/top.sv
+    external/projf-explore/lib/essential/debounce.sv
+    external/projf-explore/lib/memory/rom_async.sv    
+    external/projf-explore/lib/display/display_timings_480p.sv
+    external/projf-explore/graphics/hardware-sprites/sprite_v2.sv
+  VERILATOR_ARGS
+    "-Wno-WIDTH"
+  )
 
-  configure_file(${CMAKE_SOURCE_DIR}/data/letter_f.mem ${CMAKE_CURRENT_BINARY_DIR}/letter_f.mem COPYONLY)
-  configure_file(${CMAKE_SOURCE_DIR}/data/saucer.mem ${CMAKE_CURRENT_BINARY_DIR}/saucer.mem COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/data/letter_f.mem ${CMAKE_CURRENT_BINARY_DIR}/letter_f.mem COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/data/saucer.mem ${CMAKE_CURRENT_BINARY_DIR}/saucer.mem COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/data/hedgehog.mem ${CMAKE_CURRENT_BINARY_DIR}/hedgehog.mem COPYONLY)
