@@ -4,7 +4,7 @@ Uses the libraries from Project F (https://projectf.io/).
 
 The top module has the following devices:
 - RAM
-- 8-bit CPU
+- 16-bit CPU
 - Sprite
 
 Inputs:
@@ -21,7 +21,7 @@ Outputs:
 
 - Verilator (4.205 or above)
 - SDL2
-- Python3
+- Node.js
 
 # Getting Started
 
@@ -37,5 +37,5 @@ Note: if the repository was cloned non-recursively previously, use `git submodul
 - `mkdir build; cd build`
 - `cmake ..`
 - `cmake --build .`
-- `python3 ../tools/as01.py ../src/test/test.asm ram.hex`
+- `node ../external/nanoasm/src/asmmain.js ../src/microsys.json  ../src/test/test.asm > ram.hex`
 - `./top`

@@ -125,12 +125,6 @@ module top(
                 47: spr_base_addr <= 2 * SPR_PIXELS;
                 default: spr_base_addr <= spr_base_addr;
             endcase
-            // walk right-to-left: -132 covers sprite width and within blanking
-            sprx <= (sprx > -132) ? sprx - SPR_SPEED_X : H_RES;
-        end
-        if (!clk_locked) begin
-            sprx <= H_RES;
-            spry <= 200;
         end
     end
 
@@ -203,47 +197,60 @@ module top(
         vga_b <= sprite_vga_b;
     end
 
-   //
-   // CPU
-   //
+    //
+    // CPU
+    //
 
-   logic [7:0] cpu_data_in, cpu_data_out;
-   logic [5:0] addr;
-   logic [11:0] mem_addr;
-   logic rw;
-   logic [7:0] display;
-   logic ram_cs;
+    logic [15:0] data_in, data_out;
+    logic [15:0] cpu_data_in, cpu_data_out;
+    logic [15:0] address;
+    logic write;
+    logic [7:0] display;
+    logic ram_cs;
 
-   ram #(.A(12), .D(8)) ram0(
-      .clk, .cs(ram_cs), .rw, .addr(mem_addr), .data_in(cpu_data_out), .data_out(cpu_data_in)
-   );
+    ram #(.A(16), .D(16)) ram0(
+        .clk, .cs(ram_cs), .write, .addr(address), .data_in, .data_out
+    );
 
-   cpu cpu0(
-      .clk, .reset, .rw, .addr, .data_in(cpu_data_in), .data_out(cpu_data_out)
-   );
+    cpu cpu0(
+        .clk, .reset, .hold(), .busy(), .address, .data_in(cpu_data_in), .data_out(cpu_data_out), .write
+    );
 
+    always_comb begin
+        led = display[3:0];
+        ram_cs = !address[15];
+        data_in = cpu_data_out;
+    end
 
-   assign led = display[3:0];
+    // Read
+    always_comb begin
+        if (address[15:12] == 4'h9)
+            cpu_data_in = {4'b0000, sw};
+        else if (address[15:12] == 4'hB)
+            // Video
+            cpu_data_in = {15'h0, vsync};
+        else cpu_data_in = data_out;
+    end
 
-   // Address decoding
-   assign mem_addr = {6'b000000, addr};
-   assign ram_cs = addr[5] != 1;
+    // Write
+    always_ff @(posedge clk)
+    begin
+        if (write)
+            if (address[15:12] == 4'h8) display <= cpu_data_out;
+            else if (address[15:12] == 4'hA) begin
+                if (address[11:0] == 12'h000) sprx <= cpu_data_out;
+                else if (address[11:0] == 12'h001) spry <= cpu_data_out;
+            end
+    end
 
-   always_ff @(posedge clk)
-   begin
-      if (addr[5] == 1 && rw == 0) begin
-         display <= cpu_data_out;
-      end
-   end
-
-   // Print some stuff as an example
-   initial begin
-      if ($test$plusargs("trace") != 0) begin
-         $display("[%0t] Tracing to logs/vlt_dump.vcd...\n", $time);
-         $dumpfile("logs/vlt_dump.vcd");
-         $dumpvars();
-      end
-      $display("[%0t] Model running...\n", $time);
-   end
+    // Print some stuff as an example
+    initial begin
+        if ($test$plusargs("trace") != 0) begin
+            $display("[%0t] Tracing to logs/vlt_dump.vcd...\n", $time);
+            $dumpfile("logs/vlt_dump.vcd");
+            $dumpvars();
+        end
+        $display("[%0t] Model running...\n", $time);
+    end
 
 endmodule
