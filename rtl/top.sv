@@ -82,7 +82,7 @@ module top(
     localparam SPR_SCALE_Y  = 4;    // height scale-factor
     localparam COLR_BITS    = 4;    // bits per pixel (2^4=16 colours)
     localparam SPR_TRANS    = 9;    // transparent palette entry
-    localparam SPR_FRAMES   = 1;    // number of frames in graphic
+    localparam SPR_FRAMES   = 3;    // number of frames in graphic
     localparam SPR_FILE     = "hedgehog.mem";
     localparam SPR_PALETTE  = "hedgehog_palette.mem";
 
@@ -95,14 +95,14 @@ module top(
 
     // sprite graphic ROM
     logic [COLR_BITS-1:0] spr_rom_data;
-    logic [SPR_ADDRW-1:0] spr_rom_addr;
+    logic [SPR_ADDRW-1:0] spr_rom_addr, spr_base_addr;
     rom_sync #(
         .WIDTH(COLR_BITS),
         .DEPTH(SPR_DEPTH),
         .INIT_F(SPR_FILE)
     ) spr_rom (
         .clk(clk_pix),
-        .addr(spr_rom_addr),
+        .addr(spr_base_addr + spr_rom_addr),
         .data(spr_rom_data)
     );
 
@@ -111,8 +111,20 @@ module top(
     localparam SPR_SPEED_X = 2;
     logic signed [CORDW-1:0] sprx, spry;
 
+    // sprite frame selector
+    logic [5:0] cnt_anim;       // count from 0-63
+
     always_ff @(posedge clk_pix) begin
         if (frame) begin
+            // select sprite frame
+            cnt_anim <= cnt_anim + 1;
+            case (cnt_anim)
+                0: spr_base_addr <= 0;
+                15: spr_base_addr <= SPR_PIXELS;
+                31: spr_base_addr <= 0;
+                47: spr_base_addr <= 2 * SPR_PIXELS;
+                default: spr_base_addr <= spr_base_addr;
+            endcase
             // walk right-to-left: -132 covers sprite width and within blanking
             sprx <= (sprx > -132) ? sprx - SPR_SPEED_X : H_RES;
         end
