@@ -14,7 +14,7 @@ if (NOT verilator_FOUND)
 endif()
 
 # Create a new executable target that will contain all your sources
-add_executable(top sim/sim_main.cpp)
+add_executable(top sim/sim_main.cpp ${CMAKE_CURRENT_BINARY_DIR}/ram.hex)
 target_include_directories(top PRIVATE ${SDL2_INCLUDE_DIR})
 target_link_libraries(top PRIVATE ${SDL2_LIBRARY})
 
@@ -35,3 +35,9 @@ verilate(top TRACE
 
 configure_file(${CMAKE_SOURCE_DIR}/data/hedgehog.mem ${CMAKE_CURRENT_BINARY_DIR}/hedgehog.mem COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/data/hedgehog_palette.mem ${CMAKE_CURRENT_BINARY_DIR}/hedgehog_palette.mem COPYONLY)
+
+add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/ram.hex
+    DEPENDS ${CMAKE_SOURCE_DIR}/src/test/test.asm
+    COMMAND node ${CMAKE_SOURCE_DIR}/external/nanoasm/src/asmmain.js ${CMAKE_SOURCE_DIR}/src/microsys.json  ${CMAKE_SOURCE_DIR}/src/test/test.asm > ${CMAKE_CURRENT_BINARY_DIR}/ram.hex
+)

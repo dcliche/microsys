@@ -37,5 +37,4 @@ Note: if the repository was cloned non-recursively previously, use `git submodul
 - `mkdir build; cd build`
 - `cmake ..`
 - `cmake --build .`
-- `node ../external/nanoasm/src/asmmain.js ../src/microsys.json  ../src/test/test.asm > ram.hex`
 - `./top`
