@@ -1,7 +1,16 @@
 `timescale 1ns / 1ps
+`default_nettype none
 
-module ram(input bit clk, input bit cs, input bit write, input logic [A-1:0] addr, input logic [D-1:0] data_in, output logic [D-1:0] data_out);
-    parameter A = 10, D = 8;
+module ram #(
+    parameter A = 10, D = 8
+    ) (
+    input wire logic clk,
+    input wire logic cs,
+    input wire logic write,
+    input wire logic [A-1:0] addr,
+    input wire logic [D-1:0] data_in,
+    output logic [D-1:0] data_out
+    );
 
     logic [D-1:0] mem [0:(1<<A)-1];
     initial $readmemh("ram.hex", mem);

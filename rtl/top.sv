@@ -17,14 +17,15 @@ Pixel Clock @60Hz: 25.2 MHz
 */
 
 `timescale 1ns / 1ps
+`default_nettype none
 
 module top(
-    input clk,
-    input reset,
-    input logic [3:0] sw,
-    input logic btn_up,
-    input logic btn_ctrl,
-    input logic btn_dn,
+    input wire clk,
+    input wire reset,
+    input wire logic [3:0] sw,
+    input wire logic btn_up,
+    input wire logic btn_ctrl,
+    input wire logic btn_dn,
     output logic [3:0] led,
     output logic vga_hsync,
     output logic vga_vsync,
@@ -60,7 +61,7 @@ module top(
     logic frame;
     display_timings_480p #(.CORDW(CORDW)) display_timings_inst (
         .clk_pix,
-        .rst(!clk_locked),  // wait for pixel clock lock
+        .rst(reset),
         .sx,
         .sy,
         .hsync,
@@ -209,11 +210,11 @@ module top(
     logic ram_cs;
 
     ram #(.A(16), .D(16)) ram0(
-        .clk, .cs(ram_cs), .write, .addr(address), .data_in, .data_out
+        .clk(clk), .cs(ram_cs), .write, .addr(address), .data_in, .data_out
     );
 
     cpu cpu0(
-        .clk, .reset, .hold(), .busy(), .address, .data_in(cpu_data_in), .data_out(cpu_data_out), .write
+        .clk(clk), .reset, .hold(0), .busy(), .address, .data_in(cpu_data_in), .data_out(cpu_data_out), .write
     );
 
     always_comb begin
@@ -244,6 +245,7 @@ module top(
     end
 
     // Print some stuff as an example
+`ifdef verilator
     initial begin
         if ($test$plusargs("trace") != 0) begin
             $display("[%0t] Tracing to logs/vlt_dump.vcd...\n", $time);
@@ -252,5 +254,6 @@ module top(
         end
         $display("[%0t] Model running...\n", $time);
     end
+`endif
 
 endmodule

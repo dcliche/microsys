@@ -16,6 +16,7 @@ start:
 	mov	dx,@SPRITE_Y
 	mov	ex,#0		; Counter
 	mov	fx,#100
+	mov	[cx],fx
 	mov	[dx],fx
 loop:
 	; Wait frame
@@ -29,7 +30,7 @@ loop:
 	; Move sprite
 	inc	ex
 	and	ex,#$FF
-	mov	[cx],ex
+	mov	[dx],ex
 	jmp	loop
 wait_frame:
 	;push fx

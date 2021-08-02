@@ -1,23 +1,11 @@
 `timescale 1ns / 1ps
 
 module pll(
-    input clkref,   // 125 MHz
-    output clkout   // 25 Mhz
+    input wire logic clkref,   // 125 MHz
+    output wire logic clkout   // 25 Mhz
     );
     
-    //wire clkref_buffered;
-    wire clkfbout;
-    wire clkfbout_buffered;
-    wire pll_clkout;
-    wire pll_clkout_buffered;
-    
-    // Input buffering
-    /*
-    IBUF IBUF_IN(
-        .I(clkref),
-        .O(clkref_buffered)
-    );
-    */
+    wire logic clkfbout;
 
     // Clocking primitive
     PLLE2_BASE #(
@@ -37,7 +25,7 @@ module pll(
     )
     pll_base(
         // Clock Outputs: 1-bit (each) output: User configurable clock outputs
-        .CLKOUT0(pll_clkout),   // 1-bit output: CLKOUT0
+        .CLKOUT0(clkout),   // 1-bit output: CLKOUT0
         .CLKOUT1(),   // 1-bit output: CLKOUT1
         .CLKOUT2(),   // 1-bit output: CLKOUT2
         .CLKOUT3(),   // 1-bit output: CLKOUT3
@@ -51,20 +39,7 @@ module pll(
         .PWRDWN(1'b0),     // 1-bit input: Power-down
         .RST(1'b0),        // 1-bit input: Reset
         // Feedback Clocks: 1-bit (each) input: Clock feedback ports
-        .CLKFBIN(clkfbout_buffered)    // 1-bit input: Feedback clock
+        .CLKFBIN(clkfbout)    // 1-bit input: Feedback clock
     );
-
-    BUFH clkfb_buf(
-        .I(clkfbout),
-        .O(clkfbout_buffered)
-    );
-    
-    BUFG clkout_buf(
-        .I(pll_clkout),
-        .O(pll_clkout_buffered)
-    );
-
-    assign clkout = pll_clkout_buffered;
-
     
 endmodule
