@@ -21,7 +21,7 @@ target_link_libraries(top PRIVATE ${SDL2_LIBRARY})
 # Add the Verilated circuit to the target
 verilate(top TRACE
   OPT_FAST
-  INCLUDE_DIRS "./rtl"
+  INCLUDE_DIRS "./rtl;external/Xosera/rtl"
   SOURCES
     ./rtl/top.sv
     external/projf-explore/lib/essential/debounce.sv
@@ -29,12 +29,15 @@ verilate(top TRACE
     external/projf-explore/lib/memory/rom_async.sv
     external/projf-explore/lib/display/display_timings_480p.sv
     external/projf-explore/graphics/hardware-sprites/sprite.sv
+    external/Xosera/rtl/xosera_main.sv
+  TOP_MODULE "top"
   VERILATOR_ARGS
     "-Wno-WIDTH"
   )
 
-configure_file(${CMAKE_SOURCE_DIR}/data/hedgehog.mem ${CMAKE_CURRENT_BINARY_DIR}/hedgehog.mem COPYONLY)
-configure_file(${CMAKE_SOURCE_DIR}/data/hedgehog_palette.mem ${CMAKE_CURRENT_BINARY_DIR}/hedgehog_palette.mem COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/external/Xosera/rtl/fonts/font_ST_8x8w.mem ${CMAKE_CURRENT_BINARY_DIR}/fonts/font_ST_8x8w.mem COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/external/Xosera/rtl/fonts/font_ST_8x16w.mem ${CMAKE_CURRENT_BINARY_DIR}/fonts/font_ST_8x16w.mem COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/external/Xosera/rtl/fonts/hexfont_8x8w.mem ${CMAKE_CURRENT_BINARY_DIR}/fonts/hexfont_8x8w.mem COPYONLY)
 
 add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/ram.hex

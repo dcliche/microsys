@@ -4,3 +4,6 @@
 [submodule "external/nanoasm"]
 	path = external/nanoasm
 	url = https://github.com/sehugg/nanoasm.git
+[submodule "external/Xosera"]
+	path = external/Xosera
+	url = git@github.com:dcliche/Xosera.git

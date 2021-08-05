@@ -12,12 +12,7 @@ start:
 	mov	sp,@$7f00
 	mov	ax,@LEDS
 	mov	bx,@SWITCHES
-	mov	cx,@SPRITE_X
-	mov	dx,@SPRITE_Y
 	mov	ex,#0		; Counter
-	mov	fx,#100
-	mov	[cx],fx
-	mov	[dx],fx
 loop:
 	; Wait frame
 	mov	fx,@wait_frame
@@ -27,10 +22,6 @@ loop:
 	mov	fx,[bx]
 	mov	[ax],fx
 
-	; Move sprite
-	inc	ex
-	and	ex,#$FF
-	mov	[dx],ex
 	jmp	loop
 wait_frame:
 	;push fx
