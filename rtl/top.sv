@@ -55,13 +55,19 @@ module top(
     // VGA output
     //
 
+    logic xosera_cs_n = 1'b1;
+    logic xosera_rd_nwr = 1'b1;
+    logic [3:0] xosera_reg_num;
+    logic [7:0] xosera_data_in;
+    logic xosera_bytesel;
+
     xosera_main xosera(
         .clk(clk_pix),
-        .bus_cs_n_i(0),
-        .bus_rd_nwr_i(0),
-        .bus_reg_num_i(0),
-        .bus_bytesel_i(0),
-        .bus_data_i(0),
+        .bus_cs_n_i(xosera_cs_n),
+        .bus_rd_nwr_i(xosera_rd_nwr),
+        .bus_reg_num_i(xosera_reg_num),
+        .bus_bytesel_i(~xosera_bytesel),
+        .bus_data_i(xosera_data_in),
         .bus_data_o(),
         .red_o(vga_r),
         .green_o(vga_g),
@@ -105,7 +111,7 @@ module top(
     always_comb begin
         if (address[15:12] == 4'h9)
             cpu_data_in = {4'b0000, sw};
-        else if (address[15:12] == 4'hB)
+        else if (address[15:12] == 4'hF)
             // Video
             cpu_data_in = {15'h0, vga_vsync};
         else cpu_data_in = data_out;
@@ -115,9 +121,20 @@ module top(
     always_ff @(posedge clk)
     begin
         if (write)
-            if (address[15:12] == 4'h8) display <= cpu_data_out;
+            if (address[15:12] == 4'h8)
+                display <= cpu_data_out;
             else if (address[15:12] == 4'hA) begin
-            end
+                //$display("[%0t] Xosera: Select register [%1d]...\n", $time, cpu_data_out);
+                xosera_reg_num <= cpu_data_out[3:0];
+                xosera_bytesel <= cpu_data_out[4];
+            end else if (address[15:12] == 4'hB) begin
+                //$display("[%0t] Xosera: Set data [%1d]...\n", $time, cpu_data_out);
+                xosera_data_in <= cpu_data_out;
+            end else if (address[15:12] == 4'hC) begin
+                //$display("[%0t] Xosera: Strobe [%1d]...\n", $time, cpu_data_out);
+                xosera_cs_n <= cpu_data_out[0];
+                xosera_rd_nwr <= cpu_data_out[0];
+            end                
     end
 
     // Print some stuff as an example
