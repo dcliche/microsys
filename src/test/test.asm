@@ -18,7 +18,7 @@
 .define XVID_WRITE_INC_MSB	$19
 
 start:
-	mov	sp,@$7f00
+	mov	sp,@$7fff
 
 	;
 	; Wait a little for Xosera initialization
@@ -33,10 +33,8 @@ start0:
 	; Clear screen
 	;
 
-	mov	fx,#42
-	mov	[p0],fx
-	mov	fx,#2
-	mov	[p1],fx
+	mov	ax,#42
+	mov	bx,#2
 	mov	fx,@xcls
 	jsr	fx
 
@@ -61,8 +59,11 @@ loop:
 ; Write to Xosera
 ; ax: register
 ; bx: data
-; Modified registers: ax, bx, cx
 xwrite:
+	push	ax
+	push	bx
+	push	cx
+
 	mov	cx,@X_REG
 	mov	[cx],ax
 	mov	cx,@X_DATA
@@ -94,32 +95,65 @@ xwrite2:
 	;dec	ax
 	;bnz	xwrite2
 
+	pop	cx
+	pop	bx
+	pop	ax
+
 	rts
 
 ; ----------------------------------------------------------------------------------------------------------------------
 ; Clear screen
-; p0: character
-; p1: color
+; ax: character
+; bx: color
 ; Modified registers: ax, bx, cx, dx, ex, fx
 xcls:
-
+	;
 	; Set write increment to 0
+	;
+
+	push	ax
+	push	bx
+	push	fx
+
 	mov	ax,#XVID_WRITE_INC_LSB
 	mov	bx,#0
 	mov	fx,@xwrite
 	jsr	fx
 
-	mov	ex,@2000 	; Number of characters (80x25)
-	mov	dx,@$0000	; Current address
+	pop	fx
+	pop	bx
+	pop	ax
+
+	push	ex
+	push	dx
+
+	mov	ex,@2000 	; ex = Number of characters (80x25)
+	mov	dx,@$0000	; dx = Current address
 
 xcls0:
+	;
 	; Set write address LSB
+	;
+
+	push	ax
+	push	bx
+
 	mov	ax,#XVID_WRITE_ADDR_LSB	; Write address
 	mov	bx,dx
 	mov	fx,@xwrite
 	jsr	fx
 
+	pop	bx
+	pop	ax
+
+	;
 	; Set write address MSB
+	;
+
+	push	ax
+	push	bx
+	push	fx
+
 	mov	ax,#XVID_WRITE_ADDR_MSB	; Write address
 	mov	bx,dx
 	lsr	bx
@@ -131,25 +165,57 @@ xcls0:
 	lsr	bx
 	lsr	bx
 	mov	fx,@xwrite
-	jsr	fx	
+	jsr	fx
 
-	; Write character
+	pop	fx
+	pop	bx
+	pop	ax	
+
+	;
+	; Write color
+	;
+
+	push	ax
+	push	fx
 
 	mov	ax,#XVID_DATA_MSB	; XVID data
-	mov	fx,@p1
-	mov	bx,[fx]
+	; bx is already the color
 	mov	fx,@xwrite
 	jsr	fx
 
+	pop	fx
+	pop	ax
+
+	;
+	; Write character
+	;
+
+	push	cx
+	mov	cx,ax			; cx = character
+
+	push	ax
+	push	bx
+	push	fx
+
 	mov	ax,#XVID_DATA_LSB	; XVID data
-	mov	fx,@p0
-	mov	bx,[fx]
+	mov	bx,cx
 	mov	fx,@xwrite
 	jsr	fx
+
+	pop	fx
+	pop	bx
+	pop	ax
+
+	pop	cx
+
+	; Increment and continue
 
 	inc	dx
 	dec	ex
 	bnz	xcls0
+
+	pop	dx
+	pop	ex
 
 	rts
 
@@ -157,26 +223,19 @@ xcls0:
 ; ----------------------------------------------------------------------------------------------------------------------
 ; Wait frame
 wait_frame:
-	;push fx
+	push fx
+wait_frame0:
 	; Wait until in VSYNC
 	mov	fx,@VIDEO_FRAME
 	mov	fx,[fx]
 	and	fx,#1
-	bz	wait_frame
+	bz	wait_frame0
 	; Wait until out of VSYNC
-wait_frame0:
+wait_frame1:
 	mov	fx,@VIDEO_FRAME
 	mov	fx,[fx]
 	and	fx,#1
-	bnz	wait_frame0
-	;pop	fx
+	bnz	wait_frame1
+	pop	fx
 	rts
 
-p0:
-.data $0000
-p1:
-.data $0000
-p2:
-.data $0000
-p3:
-.data $0000
