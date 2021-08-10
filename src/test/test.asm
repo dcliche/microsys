@@ -9,13 +9,13 @@
 .define X_CTRL		$C000
 .define VIDEO_FRAME	$F000
 
-.define XVID_WRITE_ADDR_LSB	$03
-.define XVID_DATA_LSB		$04
-.define XVID_WRITE_INC_LSB	$09
+.define XVID_AUX_ADDR		$00
+.define XVID_WRITE_ADDR		$03
+.define XVID_DATA		$04
+.define XVID_AUX_DATA		$06
+.define XVID_WRITE_INC		$09
 
-.define XVID_WRITE_ADDR_MSB	$13
-.define XVID_DATA_MSB		$14
-.define XVID_WRITE_INC_MSB	$19
+.define AUX_GFXCTRL		$04
 
 start:
 	mov	sp,@$7fff
@@ -37,6 +37,53 @@ start0:
 	mov	bx,#2
 	mov	fx,@xcls
 	jsr	fx
+
+	;
+	; Wait 60 frames
+	;
+
+	mov	ax,#60
+	mov	fx,@delay
+	jsr	fx
+
+	;
+	; Set bitmap mode
+	;
+
+	mov	fx,@xwritew
+
+	mov	ax,#XVID_AUX_ADDR
+	mov	bx,@AUX_GFXCTRL
+	jsr	fx
+
+	mov	ax,#XVID_AUX_DATA
+	mov	bx,@$8000
+	jsr	fx
+
+	;
+	; Clear the bitmap
+	;
+
+	mov	fx,@xwritew
+
+	; Reset memory address
+	mov	ax,#XVID_WRITE_ADDR
+	mov	bx,@0
+	jsr	fx
+
+	; Set write increment
+	mov	ax,#XVID_WRITE_INC
+	mov	bx,@1
+	jsr	fx
+
+	; Draw pixels
+	mov	cx,@38400	; 480 * 80
+start1:
+	mov	ax,#XVID_DATA
+	mov	bx,@$AAAA
+	jsr	fx
+	dec	cx
+	bnz	start1
 
 	;
 	; Loop
@@ -71,7 +118,7 @@ xwrite:
 
 	; Wait
 	;mov	ax,@$000f
-xwrite0:
+;xwrite0:
 	;dec	ax
 	;bnz	xwrite0	
 
@@ -82,7 +129,7 @@ xwrite0:
 
 	; Wait
 	;mov	ax,@$000f
-xwrite1:
+;xwrite1:
 	;dec	ax
 	;bnz	xwrite1
 
@@ -91,7 +138,7 @@ xwrite1:
 
 	; Wait
 	;mov	ax,@$0fff
-xwrite2:
+;xwrite2:
 	;dec	ax
 	;bnz	xwrite2
 
@@ -99,6 +146,42 @@ xwrite2:
 	pop	bx
 	pop	ax
 
+	rts
+
+; ----------------------------------------------------------------------------------------------------------------------
+; Write to Xosera
+; ax: register
+; bx: data
+xwritew:
+	push	fx
+	mov	fx,@xwrite
+
+	;
+	; Write MSB
+	;
+
+	push	ax
+	push	bx
+	or	ax,#$10
+	lsr	bx
+	lsr	bx
+	lsr	bx
+	lsr	bx
+	lsr	bx
+	lsr	bx
+	lsr	bx
+	lsr	bx
+	jsr	fx
+	pop	bx
+	pop	ax
+
+	;
+	; Write LSB
+	;
+
+	jsr	fx
+
+	pop	fx
 	rts
 
 ; ----------------------------------------------------------------------------------------------------------------------
@@ -115,7 +198,7 @@ xcls:
 	push	bx
 	push	fx
 
-	mov	ax,#XVID_WRITE_INC_LSB
+	mov	ax,#XVID_WRITE_INC
 	mov	bx,#0
 	mov	fx,@xwrite
 	jsr	fx
@@ -127,49 +210,24 @@ xcls:
 	push	ex
 	push	dx
 
-	mov	ex,@2000 	; ex = Number of characters (80x25)
+	mov	ex,@2400 	; ex = Number of characters (80x25)
 	mov	dx,@$0000	; dx = Current address
 
 xcls0:
 	;
-	; Set write address LSB
+	; Set write address
 	;
 
 	push	ax
 	push	bx
 
-	mov	ax,#XVID_WRITE_ADDR_LSB	; Write address
+	mov	ax,#XVID_WRITE_ADDR	; Write address
 	mov	bx,dx
-	mov	fx,@xwrite
+	mov	fx,@xwritew
 	jsr	fx
 
 	pop	bx
 	pop	ax
-
-	;
-	; Set write address MSB
-	;
-
-	push	ax
-	push	bx
-	push	fx
-
-	mov	ax,#XVID_WRITE_ADDR_MSB	; Write address
-	mov	bx,dx
-	lsr	bx
-	lsr	bx
-	lsr	bx
-	lsr	bx
-	lsr	bx
-	lsr	bx
-	lsr	bx
-	lsr	bx
-	mov	fx,@xwrite
-	jsr	fx
-
-	pop	fx
-	pop	bx
-	pop	ax	
 
 	;
 	; Write color
@@ -178,7 +236,8 @@ xcls0:
 	push	ax
 	push	fx
 
-	mov	ax,#XVID_DATA_MSB	; XVID data
+	mov	ax,#XVID_DATA		; XVID data
+	or	ax,#$10
 	; bx is already the color
 	mov	fx,@xwrite
 	jsr	fx
@@ -197,7 +256,7 @@ xcls0:
 	push	bx
 	push	fx
 
-	mov	ax,#XVID_DATA_LSB	; XVID data
+	mov	ax,#XVID_DATA		; XVID data
 	mov	bx,cx
 	mov	fx,@xwrite
 	jsr	fx
@@ -239,3 +298,19 @@ wait_frame1:
 	pop	fx
 	rts
 
+; ----------------------------------------------------------------------------------------------------------------------
+; Delay
+; ax: nb frames
+delay:
+	push	ax
+	push	fx
+
+delay0:
+	mov	fx,@wait_frame
+	jsr	fx
+	dec	ax
+	bnz	delay0
+
+	pop	fx
+	pop	ax
+	rts
