@@ -72,6 +72,7 @@ module top(
         .red_o(vga_r),
         .green_o(vga_g),
         .blue_o(vga_b),
+        .vblank_o(),
         .hsync_o(vga_hsync),
         .vsync_o(vga_vsync),
         .dv_de_o(),

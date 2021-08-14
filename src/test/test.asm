@@ -14,8 +14,16 @@
 .define XVID_DATA		$04
 .define XVID_AUX_DATA		$06
 .define XVID_WRITE_INC		$09
+.define XVID_WR_PR_CMD		$0E
 
 .define AUX_GFXCTRL		$04
+
+.define PR_COORDX1		$0000
+.define PR_COORDY1		$1000
+.define PR_COORDX2		$2000
+.define PR_COORDY2		$3000
+.define PR_COLOR		$4000
+.define PR_EXECUTE		$F000
 
 start:
 	mov	sp,@$7fff
@@ -80,10 +88,109 @@ start0:
 	mov	cx,@38400	; 480 * 80
 start1:
 	mov	ax,#XVID_DATA
-	mov	bx,@$AAAA
+	mov	bx,@$1111
 	jsr	fx
 	dec	cx
 	bnz	start1
+
+	; Send draw line command
+	mov	ax,#XVID_WR_PR_CMD
+
+	mov	bx,@PR_COORDX1
+	or	bx,@0
+	jsr	fx
+
+	mov	bx,@PR_COORDY1
+	or	bx,@0
+	jsr	fx
+
+	mov	bx,@PR_COORDX2
+	or	bx,@79
+	jsr	fx
+
+	mov	bx,@PR_COORDY2
+	or	bx,@200
+	jsr	fx
+
+	mov	bx,@PR_COLOR
+	or	bx,@4		; red
+	jsr	fx
+
+	mov	bx,@PR_EXECUTE
+	jsr	fx
+
+	;
+	; Wait 60 frames
+	;
+
+	push	ax
+	push	fx
+	mov	ax,#60
+	mov	fx,@delay
+	jsr	fx
+	pop	fx
+	pop	ax	
+
+	; Second line
+	mov	bx,@PR_COORDX1
+	or	bx,@79
+	jsr	fx
+
+	mov	bx,@PR_COORDY1
+	or	bx,@200
+	jsr	fx
+
+	mov	bx,@PR_COORDX2
+	or	bx,@50
+	jsr	fx
+
+	mov	bx,@PR_COORDY2
+	or	bx,@300
+	jsr	fx
+
+	mov	bx,@PR_COLOR
+	or	bx,@2			; green
+	jsr	fx
+
+	mov	bx,@PR_EXECUTE
+	jsr	fx
+
+	;
+	; Wait 60 frames
+	;
+
+	push	ax
+	push	fx
+	mov	ax,#60
+	mov	fx,@delay
+	jsr	fx
+	pop	fx
+	pop	ax
+
+	; Third line
+	mov	bx,@PR_COORDX1
+	or	bx,@50
+	jsr	fx
+
+	mov	bx,@PR_COORDY1
+	or	bx,@300
+	jsr	fx
+
+	mov	bx,@PR_COORDX2
+	or	bx,@10
+	jsr	fx
+
+	mov	bx,@PR_COORDY2
+	or	bx,@100
+	jsr	fx
+
+	mov	bx,@PR_COLOR
+	or	bx,@14		; yellow
+	jsr	fx
+
+	mov	bx,@PR_EXECUTE
+	jsr	fx
+
 
 	;
 	; Loop
