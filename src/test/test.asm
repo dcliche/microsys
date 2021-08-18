@@ -50,9 +50,9 @@ start0:
 	; Wait 60 frames
 	;
 
-	mov	ax,#60
-	mov	fx,@delay
-	jsr	fx
+	;mov	ax,#60
+	;mov	fx,@delay
+	;jsr	fx
 
 	;
 	; Set bitmap mode
@@ -88,7 +88,7 @@ start0:
 	mov	cx,@38400	; 480 * 80
 start1:
 	mov	ax,#XVID_DATA
-	mov	bx,@$1111
+	mov	bx,@$1f00
 	jsr	fx
 	dec	cx
 	bnz	start1
@@ -105,7 +105,7 @@ start1:
 	jsr	fx
 
 	mov	bx,@PR_COORDX2
-	or	bx,@79
+	or	bx,@159
 	jsr	fx
 
 	mov	bx,@PR_COORDY2
@@ -120,12 +120,12 @@ start1:
 	jsr	fx
 
 	;
-	; Wait 60 frames
+	; Wait 10 frames
 	;
 
 	push	ax
 	push	fx
-	mov	ax,#60
+	mov	ax,#10
 	mov	fx,@delay
 	jsr	fx
 	pop	fx
@@ -133,7 +133,7 @@ start1:
 
 	; Second line
 	mov	bx,@PR_COORDX1
-	or	bx,@79
+	or	bx,@159
 	jsr	fx
 
 	mov	bx,@PR_COORDY1
@@ -156,12 +156,12 @@ start1:
 	jsr	fx
 
 	;
-	; Wait 60 frames
+	; Wait 10 frames
 	;
 
 	push	ax
 	push	fx
-	mov	ax,#60
+	mov	ax,#10
 	mov	fx,@delay
 	jsr	fx
 	pop	fx
@@ -177,7 +177,7 @@ start1:
 	jsr	fx
 
 	mov	bx,@PR_COORDX2
-	or	bx,@10
+	or	bx,@50
 	jsr	fx
 
 	mov	bx,@PR_COORDY2
@@ -185,7 +185,7 @@ start1:
 	jsr	fx
 
 	mov	bx,@PR_COLOR
-	or	bx,@14		; yellow
+	or	bx,@15		; yellow
 	jsr	fx
 
 	mov	bx,@PR_EXECUTE
