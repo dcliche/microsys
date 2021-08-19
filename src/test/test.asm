@@ -65,7 +65,7 @@ start0:
 	jsr	fx
 
 	mov	ax,#XVID_AUX_DATA
-	mov	bx,@$8000
+	mov	bx,@$8003
 	jsr	fx
 
 	;
@@ -88,7 +88,7 @@ start0:
 	mov	cx,@38400	; 480 * 80
 start1:
 	mov	ax,#XVID_DATA
-	mov	bx,@$1f00
+	mov	bx,@$0000
 	jsr	fx
 	dec	cx
 	bnz	start1
@@ -105,11 +105,11 @@ start1:
 	jsr	fx
 
 	mov	bx,@PR_COORDX2
-	or	bx,@159
+	or	bx,@319
 	jsr	fx
 
 	mov	bx,@PR_COORDY2
-	or	bx,@200
+	or	bx,@239
 	jsr	fx
 
 	mov	bx,@PR_COLOR
@@ -133,19 +133,19 @@ start1:
 
 	; Second line
 	mov	bx,@PR_COORDX1
-	or	bx,@159
+	or	bx,@319
 	jsr	fx
 
 	mov	bx,@PR_COORDY1
-	or	bx,@200
+	or	bx,@239
 	jsr	fx
 
 	mov	bx,@PR_COORDX2
-	or	bx,@50
+	or	bx,@0
 	jsr	fx
 
 	mov	bx,@PR_COORDY2
-	or	bx,@300
+	or	bx,@239
 	jsr	fx
 
 	mov	bx,@PR_COLOR
@@ -169,23 +169,23 @@ start1:
 
 	; Third line
 	mov	bx,@PR_COORDX1
-	or	bx,@50
+	or	bx,@1
 	jsr	fx
 
 	mov	bx,@PR_COORDY1
-	or	bx,@300
+	or	bx,@239
 	jsr	fx
 
 	mov	bx,@PR_COORDX2
-	or	bx,@50
+	or	bx,@1
 	jsr	fx
 
 	mov	bx,@PR_COORDY2
-	or	bx,@100
+	or	bx,@1
 	jsr	fx
 
 	mov	bx,@PR_COLOR
-	or	bx,@15		; yellow
+	or	bx,@14		; yellow
 	jsr	fx
 
 	mov	bx,@PR_EXECUTE
