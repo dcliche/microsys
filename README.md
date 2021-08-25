@@ -1,27 +1,19 @@
 A simple computer in SystemVerilog with a simulator.
 
-Uses the libraries from Project F (https://projectf.io/).
-
 The top module has the following devices:
-- RAM
-- 16-bit CPU
-- Sprite
+- Xosera
 
 Inputs:
-- 4 switches (key 1 to 4 to toggle with the simulator)
 - Reset button (hold F1 with the simulator)
-- Up and down buttons
-- Control button (TAB key with the simulator)
 
 Outputs:
-- 4 LEDs
-- VGA 640x480 display
+- VGA 640x480 display using Xosera
 
 # Requirements
 
 - Verilator (4.205 or above)
 - SDL2
-- Node.js
+- vasmm68k_mot
 
 # Getting Started
 

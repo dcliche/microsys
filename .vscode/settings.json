@@ -5,5 +5,13 @@
         "args": [
             ""
         ]
+    },
+    "files.associations": {
+        "*.elua": "html",
+        "*.chai": "cpp",
+        "chrono": "cpp",
+        "memory": "cpp",
+        "algorithm": "cpp",
+        "optional": "cpp"
     }
 }

@@ -14,7 +14,14 @@ if (NOT verilator_FOUND)
 endif()
 
 # Create a new executable target that will contain all your sources
-add_executable(top sim/sim_main.cpp ${CMAKE_CURRENT_BINARY_DIR}/ram.hex)
+add_executable(top 
+  sim/sim_main.cpp
+  sim/m68kcpu.c
+  sim/m68kdasm.c
+  sim/m68kops.c
+  sim/softfloat/softfloat.c
+  ${CMAKE_CURRENT_BINARY_DIR}/test.bin
+)
 target_include_directories(top PRIVATE ${SDL2_INCLUDE_DIR})
 target_link_libraries(top PRIVATE ${SDL2_LIBRARY})
 
@@ -24,11 +31,6 @@ verilate(top TRACE
   INCLUDE_DIRS "./rtl;external/Xosera/rtl"
   SOURCES
     ./rtl/top.sv
-    external/projf-explore/lib/essential/debounce.sv
-    external/projf-explore/lib/memory/rom_sync.sv
-    external/projf-explore/lib/memory/rom_async.sv
-    external/projf-explore/lib/display/display_timings_480p.sv
-    external/projf-explore/graphics/hardware-sprites/sprite.sv
     external/Xosera/rtl/xosera_main.sv
   TOP_MODULE "top"
   VERILATOR_ARGS
@@ -40,7 +42,7 @@ configure_file(${CMAKE_SOURCE_DIR}/external/Xosera/rtl/fonts/font_ST_8x16w.mem $
 configure_file(${CMAKE_SOURCE_DIR}/external/Xosera/rtl/fonts/hexfont_8x8w.mem ${CMAKE_CURRENT_BINARY_DIR}/fonts/hexfont_8x8w.mem COPYONLY)
 
 add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/ram.hex
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/test.bin
     DEPENDS ${CMAKE_SOURCE_DIR}/src/test/test.asm
-    COMMAND node ${CMAKE_SOURCE_DIR}/external/nanoasm/src/asmmain.js ${CMAKE_SOURCE_DIR}/src/microsys.json  ${CMAKE_SOURCE_DIR}/src/test/test.asm > ${CMAKE_CURRENT_BINARY_DIR}/ram.hex
+    COMMAND vasmm68k_mot -Fbin -m68010 ${CMAKE_SOURCE_DIR}/src/test/test.asm -o ${CMAKE_CURRENT_BINARY_DIR}/test.bin
 )

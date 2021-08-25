@@ -1,9 +1,3 @@
-[submodule "external/projf-explore"]
-	path = external/projf-explore
-	url = git@github.com:dcliche/projf-explore.git
-[submodule "external/nanoasm"]
-	path = external/nanoasm
-	url = https://github.com/sehugg/nanoasm.git
 [submodule "external/Xosera"]
 	path = external/Xosera
 	url = git@github.com:dcliche/Xosera.git

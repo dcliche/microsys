@@ -1,423 +1,116 @@
-.arch microsys
-;.org 0x0000
-;.len 32768
+XOSERA_ADDRESS	equ	$f80060
 
-.define LEDS		$8000
-.define SWITCHES	$9000
-.define X_REG		$A000
-.define X_DATA		$B000
-.define X_CTRL		$C000
-.define VIDEO_FRAME	$F000
+XVID_AUX_ADDR	equ	$00
+XVID_WRITE_ADDR	equ	$03
+XVID_DATA	equ	$04
+XVID_AUX_DATA	equ	$06
+XVID_WRITE_INC	equ	$09
+XVID_WR_PR_CMD	equ	$0E
 
-.define XVID_AUX_ADDR		$00
-.define XVID_WRITE_ADDR		$03
-.define XVID_DATA		$04
-.define XVID_AUX_DATA		$06
-.define XVID_WRITE_INC		$09
-.define XVID_WR_PR_CMD		$0E
+init:
 
-.define AUX_GFXCTRL		$04
+	; Wait until Xosera is ready
+	move.l	#$ffff,d0
+init0:
+	subq.l	#1,d0
+	bne	init0
 
-.define PR_COORDX1		$0000
-.define PR_COORDY1		$1000
-.define PR_COORDX2		$2000
-.define PR_COORDY2		$3000
-.define PR_COLOR		$4000
-.define PR_EXECUTE		$F000
+	bsr	xcls
 
-start:
-	mov	sp,@$7fff
-
-	;
-	; Wait a little for Xosera initialization
-	;
-
-	mov	ax,@$1fff
-start0:
-	dec	ax
-	bnz	start0		
-
-	;
-	; Clear screen
-	;
-
-	mov	ax,#42
-	mov	bx,#2
-	mov	fx,@xcls
-	jsr	fx
-
-	;
-	; Wait 60 frames
-	;
-
-	;mov	ax,#60
-	;mov	fx,@delay
-	;jsr	fx
-
-	;
-	; Set bitmap mode
-	;
-
-	mov	fx,@xwritew
-
-	mov	ax,#XVID_AUX_ADDR
-	mov	bx,@AUX_GFXCTRL
-	jsr	fx
-
-	mov	ax,#XVID_AUX_DATA
-	mov	bx,@$8003
-	jsr	fx
-
-	;
-	; Clear the bitmap
-	;
-
-	mov	fx,@xwritew
-
-	; Reset memory address
-	mov	ax,#XVID_WRITE_ADDR
-	mov	bx,@0
-	jsr	fx
-
-	; Set write increment
-	mov	ax,#XVID_WRITE_INC
-	mov	bx,@1
-	jsr	fx
-
-	; Draw pixels
-	mov	cx,@38400	; 480 * 80
-start1:
-	mov	ax,#XVID_DATA
-	mov	bx,@$0000
-	jsr	fx
-	dec	cx
-	bnz	start1
-
-	; Send draw line command
-	mov	ax,#XVID_WR_PR_CMD
-
-	mov	bx,@PR_COORDX1
-	or	bx,@0
-	jsr	fx
-
-	mov	bx,@PR_COORDY1
-	or	bx,@0
-	jsr	fx
-
-	mov	bx,@PR_COORDX2
-	or	bx,@319
-	jsr	fx
-
-	mov	bx,@PR_COORDY2
-	or	bx,@239
-	jsr	fx
-
-	mov	bx,@PR_COLOR
-	or	bx,@4		; red
-	jsr	fx
-
-	mov	bx,@PR_EXECUTE
-	jsr	fx
-
-	;
-	; Wait 10 frames
-	;
-
-	push	ax
-	push	fx
-	mov	ax,#10
-	mov	fx,@delay
-	jsr	fx
-	pop	fx
-	pop	ax	
-
-	; Second line
-	mov	bx,@PR_COORDX1
-	or	bx,@319
-	jsr	fx
-
-	mov	bx,@PR_COORDY1
-	or	bx,@239
-	jsr	fx
-
-	mov	bx,@PR_COORDX2
-	or	bx,@0
-	jsr	fx
-
-	mov	bx,@PR_COORDY2
-	or	bx,@239
-	jsr	fx
-
-	mov	bx,@PR_COLOR
-	or	bx,@2			; green
-	jsr	fx
-
-	mov	bx,@PR_EXECUTE
-	jsr	fx
-
-	;
-	; Wait 10 frames
-	;
-
-	push	ax
-	push	fx
-	mov	ax,#10
-	mov	fx,@delay
-	jsr	fx
-	pop	fx
-	pop	ax
-
-	; Third line
-	mov	bx,@PR_COORDX1
-	or	bx,@1
-	jsr	fx
-
-	mov	bx,@PR_COORDY1
-	or	bx,@239
-	jsr	fx
-
-	mov	bx,@PR_COORDX2
-	or	bx,@1
-	jsr	fx
-
-	mov	bx,@PR_COORDY2
-	or	bx,@1
-	jsr	fx
-
-	mov	bx,@PR_COLOR
-	or	bx,@14		; yellow
-	jsr	fx
-
-	mov	bx,@PR_EXECUTE
-	jsr	fx
-
-
-	;
-	; Loop
-	;
-
-	mov	ax,@LEDS
-	mov	bx,@SWITCHES
-loop:
-	; Wait frame
-	mov	fx,@wait_frame
-	jsr	fx
-
-	; Display switches
-	mov	fx,[bx]
-	mov	[ax],fx
-
-	jmp	loop
-
-; ----------------------------------------------------------------------------------------------------------------------
-; Write to Xosera
-; ax: register
-; bx: data
+	jmp	*
+	
+; ---------------------------------------------
+; Write byte to Xosera
+; d0: register
+; d1: value
+; d2: msb (0) / lsb (1)
 xwrite:
-	push	ax
-	push	bx
-	push	cx
+	move.l	d0,-(sp)
+	move.l	d1,-(sp)
 
-	mov	cx,@X_REG
-	mov	[cx],ax
-	mov	cx,@X_DATA
-	mov	[cx],bx
+	lsl.w	#8,d0
+	or.b	d1,d0
+	lsl.w	#8,d2
+	lsl.w	#4,d2
+	or.w	d2,d0
+	move.w	d0,XOSERA_ADDRESS
 
-	; Wait
-	;mov	ax,@$000f
-;xwrite0:
-	;dec	ax
-	;bnz	xwrite0	
-
-	; Strobe
-	mov	cx,@X_CTRL
-	mov	bx,#0
-	mov	[cx],bx		
-
-	; Wait
-	;mov	ax,@$000f
-;xwrite1:
-	;dec	ax
-	;bnz	xwrite1
-
-	mov	bx,#1
-	mov	[cx],bx
-
-	; Wait
-	;mov	ax,@$0fff
-;xwrite2:
-	;dec	ax
-	;bnz	xwrite2
-
-	pop	cx
-	pop	bx
-	pop	ax
+	move.l	(sp)+,d1
+	move.l	(sp)+,d0
 
 	rts
 
-; ----------------------------------------------------------------------------------------------------------------------
-; Write to Xosera
-; ax: register
-; bx: data
+; ---------------------------------------------
+; Write word to Xosera
+; d0: register
+; d1: value
 xwritew:
-	push	fx
-	mov	fx,@xwrite
+	move.l	d2,-(sp)
 
-	;
-	; Write MSB
-	;
+; Write MSB
+	move.l	d1,-(sp)
+	lsr.l	#8,d1
+	move.l	#0,d2
+	bsr	xwrite
+	move.l	(sp)+,d1
 
-	push	ax
-	push	bx
-	or	ax,#$10
-	lsr	bx
-	lsr	bx
-	lsr	bx
-	lsr	bx
-	lsr	bx
-	lsr	bx
-	lsr	bx
-	lsr	bx
-	jsr	fx
-	pop	bx
-	pop	ax
+; Write LSB
+	move.l	#1,d2
+	bsr	xwrite
 
-	;
-	; Write LSB
-	;
-
-	jsr	fx
-
-	pop	fx
+	move.l	(sp)+,d2
 	rts
 
 ; ----------------------------------------------------------------------------------------------------------------------
 ; Clear screen
-; ax: character
-; bx: color
-; Modified registers: ax, bx, cx, dx, ex, fx
+; d0: character
+; d1: color
 xcls:
 	;
 	; Set write increment to 0
 	;
 
-	push	ax
-	push	bx
-	push	fx
+	move.l	#XVID_WRITE_INC,d0
+	move.l	#0,d1
+	bsr	xwritew
 
-	mov	ax,#XVID_WRITE_INC
-	mov	bx,#0
-	mov	fx,@xwrite
-	jsr	fx
-
-	pop	fx
-	pop	bx
-	pop	ax
-
-	push	ex
-	push	dx
-
-	mov	ex,@2400 	; ex = Number of characters (80x25)
-	mov	dx,@$0000	; dx = Current address
+	
+	move.l	#2400,d3 	; d3 = Number of characters (80x25)
+	move.l	#0,d4		; d4 = Write address
 
 xcls0:
 	;
 	; Set write address
 	;
 
-	push	ax
-	push	bx
-
-	mov	ax,#XVID_WRITE_ADDR	; Write address
-	mov	bx,dx
-	mov	fx,@xwritew
-	jsr	fx
-
-	pop	bx
-	pop	ax
+	move.l	#XVID_WRITE_ADDR,d0
+	move.l	d4,d1
+	bsr	xwritew
 
 	;
 	; Write color
 	;
 
-	push	ax
-	push	fx
-
-	mov	ax,#XVID_DATA		; XVID data
-	or	ax,#$10
-	; bx is already the color
-	mov	fx,@xwrite
-	jsr	fx
-
-	pop	fx
-	pop	ax
+	move.l	#XVID_DATA,d0
+	move.l	#2,d1
+	move.l	#0,d2
+	bsr	xwrite
 
 	;
 	; Write character
 	;
 
-	push	cx
-	mov	cx,ax			; cx = character
-
-	push	ax
-	push	bx
-	push	fx
-
-	mov	ax,#XVID_DATA		; XVID data
-	mov	bx,cx
-	mov	fx,@xwrite
-	jsr	fx
-
-	pop	fx
-	pop	bx
-	pop	ax
-
-	pop	cx
+	move.l	#XVID_DATA,d0
+	move.l	#42,d1
+	move.l	#1,d2
+	bsr	xwrite
 
 	; Increment and continue
 
-	inc	dx
-	dec	ex
-	bnz	xcls0
-
-	pop	dx
-	pop	ex
+	addq.l	#1,d4
+	subq.l	#1,d3
+	bne	xcls0
 
 	rts
 
 
-; ----------------------------------------------------------------------------------------------------------------------
-; Wait frame
-wait_frame:
-	push fx
-wait_frame0:
-	; Wait until in VSYNC
-	mov	fx,@VIDEO_FRAME
-	mov	fx,[fx]
-	and	fx,#1
-	bz	wait_frame0
-	; Wait until out of VSYNC
-wait_frame1:
-	mov	fx,@VIDEO_FRAME
-	mov	fx,[fx]
-	and	fx,#1
-	bnz	wait_frame1
-	pop	fx
-	rts
-
-; ----------------------------------------------------------------------------------------------------------------------
-; Delay
-; ax: nb frames
-delay:
-	push	ax
-	push	fx
-
-delay0:
-	mov	fx,@wait_frame
-	jsr	fx
-	dec	ax
-	bnz	delay0
-
-	pop	fx
-	pop	ax
-	rts
