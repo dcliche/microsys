@@ -1,78 +1,51 @@
 XOSERA_ADDRESS	equ	$f80060
 
 XVID_AUX_ADDR	equ	$00
-XVID_WRITE_ADDR	equ	$03
-XVID_DATA	equ	$04
-XVID_AUX_DATA	equ	$06
-XVID_WRITE_INC	equ	$09
-XVID_WR_PR_CMD	equ	$0E
+XVID_CONST_VAL	equ	$04
+XVID_WRITE_ADDR	equ	$0C
+XVID_DATA	equ	$10
+XVID_AUX_DATA	equ	$18
+XVID_WRITE_INC	equ	$24
+XVID_WR_PR_CMD	equ	$38
+
+	org	$2000
 
 init:
 
 	; Wait until Xosera is ready
-	move.l	#$ffff,d0
+	lea	XOSERA_ADDRESS,a0
+	move.l	#$55AA,d0
 init0:
-	subq.l	#1,d0
+	movep.w	d0,(XVID_CONST_VAL,a0)
+	movep.w	(XVID_CONST_VAL,a0),d0
+	cmp.w	#$55AA,d0
 	bne	init0
 
-	bsr	xcls
+	move.l	#42,-(sp)	; character
+	move.l	#2,-(sp)	; color
+	jsr	xcls
+	addq.l	#8,sp
 
 	jmp	*
 	
-; ---------------------------------------------
-; Write byte to Xosera
-; d0: register
-; d1: value
-; d2: msb (0) / lsb (1)
-xwrite:
-	move.l	d0,-(sp)
-	move.l	d1,-(sp)
-
-	lsl.w	#8,d0
-	or.b	d1,d0
-	lsl.w	#8,d2
-	lsl.w	#4,d2
-	or.w	d2,d0
-	move.w	d0,XOSERA_ADDRESS
-
-	move.l	(sp)+,d1
-	move.l	(sp)+,d0
-
-	rts
-
-; ---------------------------------------------
-; Write word to Xosera
-; d0: register
-; d1: value
-xwritew:
-	move.l	d2,-(sp)
-
-; Write MSB
-	move.l	d1,-(sp)
-	lsr.l	#8,d1
-	move.l	#0,d2
-	bsr	xwrite
-	move.l	(sp)+,d1
-
-; Write LSB
-	move.l	#1,d2
-	bsr	xwrite
-
-	move.l	(sp)+,d2
-	rts
 
 ; ----------------------------------------------------------------------------------------------------------------------
 ; Clear screen
-; d0: character
-; d1: color
+; p1: color
+; p2: character
 xcls:
+	move.l	sp,a0
+
+	movem.l d2-d4,-(sp)
+
+	lea	XOSERA_ADDRESS,a1
+
 	;
 	; Set write increment to 0
 	;
 
-	move.l	#XVID_WRITE_INC,d0
-	move.l	#0,d1
-	bsr	xwritew
+	move.l	#0,d0
+	movep.w	d0,(XVID_WRITE_INC,a1)
 
 	
 	move.l	#2400,d3 	; d3 = Number of characters (80x25)
@@ -83,33 +56,29 @@ xcls0:
 	; Set write address
 	;
 
-	move.l	#XVID_WRITE_ADDR,d0
-	move.l	d4,d1
-	bsr	xwritew
+	movep.w	d4,(XVID_WRITE_ADDR,a1)
 
 	;
 	; Write color
 	;
 
-	move.l	#XVID_DATA,d0
-	move.l	#2,d1
-	move.l	#0,d2
-	bsr	xwrite
+	move.l	(4,a0),d0
+	move.b	d0,(XVID_DATA,a1)
 
 	;
 	; Write character
 	;
 
-	move.l	#XVID_DATA,d0
-	move.l	#42,d1
-	move.l	#1,d2
-	bsr	xwrite
+	move.l	(8,a0),d0
+	move.b	d0,(XVID_DATA+2,a1)
 
 	; Increment and continue
 
 	addq.l	#1,d4
 	subq.l	#1,d3
 	bne	xcls0
+
+	movem.l (sp)+,d2-d4
 
 	rts
 
