@@ -40,9 +40,10 @@ verilate(top TRACE
 configure_file(${CMAKE_SOURCE_DIR}/external/Xosera/rtl/fonts/font_ST_8x8w.mem ${CMAKE_CURRENT_BINARY_DIR}/fonts/font_ST_8x8w.mem COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/external/Xosera/rtl/fonts/font_ST_8x16w.mem ${CMAKE_CURRENT_BINARY_DIR}/fonts/font_ST_8x16w.mem COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/external/Xosera/rtl/fonts/hexfont_8x8w.mem ${CMAKE_CURRENT_BINARY_DIR}/fonts/hexfont_8x8w.mem COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/external/Xosera/rtl/def_palette.mem ${CMAKE_CURRENT_BINARY_DIR}/def_palette.mem COPYONLY)
 
 add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/test.bin
     DEPENDS ${CMAKE_SOURCE_DIR}/src/test/test.asm
-    COMMAND vasmm68k_mot -Fbin -m68010 ${CMAKE_SOURCE_DIR}/src/test/test.asm -o ${CMAKE_CURRENT_BINARY_DIR}/test.bin
+    COMMAND vasmm68k_mot -Fbin -m68010 -wfail ${CMAKE_SOURCE_DIR}/src/test/test.asm -o ${CMAKE_CURRENT_BINARY_DIR}/test.bin
 )

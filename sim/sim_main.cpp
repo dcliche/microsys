@@ -5,6 +5,8 @@
 
 #include <verilated.h>
 #include <iostream>
+#include <thread>
+#include <condition_variable>
 
 // Include model header, generated from Verilating "top.v"
 #include "Vtop.h"
@@ -13,15 +15,25 @@
 #include "m68k.h"
 
 Vtop* top;
-int assert_xosera_strobe_counter = 0;
+std::atomic<int> assert_xosera_strobe_counter{0};
 bool is_booting = false;
+bool is_m68k_reset = false;
+bool is_m68k_execute = false;
+bool is_m68k_running = true;
+
+std::condition_variable m68k_cv;
+std::mutex m68k_cv_m;
+std::mutex top_m;
+
+unsigned int timer_100hz = 0;
 
 // ---------------------------------------------------------
 
 void disassemble_program();
 
 /* Memory-mapped IO ports */
-#define XOSERA_ADDRESS 0xf80060
+#define XOSERA_ADDRESS_START	0xf80060
+#define XOSERA_ADDRESS_END		(XOSERA_ADDRESS_START + 0x40)
 
 /* IRQ connections */
 #define IRQ_NMI_DEVICE 7
@@ -31,8 +43,7 @@ void disassemble_program();
 //#define OUTPUT_DEVICE_PERIOD 1
 
 /* ROM and RAM sizes */
-#define MAX_ROM 0x7fff
-#define MAX_RAM 0x7fff
+#define MAX_RAM (1024*1024-1)
 
 /* Read/write macros */
 #define READ_BYTE(BASE, ADDR) (BASE)[ADDR]
@@ -72,8 +83,8 @@ int nmi_device_ack(void);
 void xosera_device_reset(void);
 void xosera_device_update(void);
 int xosera_device_ack(void);
-unsigned int xosera_device_read(void);
-void xosera_device_write(unsigned int value);
+unsigned int xosera_device_read(unsigned int address);
+void xosera_device_write(unsigned int address, unsigned int value);
 
 void int_controller_set(unsigned int value);
 void int_controller_clear(unsigned int value);
@@ -88,7 +99,6 @@ unsigned int g_nmi = 0;                         /* 1 if nmi pending */
 unsigned int g_int_controller_pending = 0;      /* list of pending interrupts */
 unsigned int g_int_controller_highest_int = 0;  /* Highest pending interrupt */
 
-unsigned char g_rom[MAX_ROM+1];                 /* ROM */
 unsigned char g_ram[MAX_RAM+1];                 /* RAM */
 unsigned int  g_fc;                             /* Current function code from CPU */
 
@@ -121,21 +131,10 @@ void exit_error(const char* fmt, ...)
 /* Read data from RAM, ROM, or a device */
 unsigned int cpu_read_byte(unsigned int address)
 {
-	if(g_fc & 2)	/* Program */
-	{
-		if(address > MAX_ROM)
-			exit_error("Attempted to read byte from ROM address %08x", address);
-		return READ_BYTE(g_rom, address);
-	}
+	if (address >= XOSERA_ADDRESS_START && address < XOSERA_ADDRESS_END)
+			return xosera_device_read(address - XOSERA_ADDRESS_START);
 
 	/* Otherwise it's data space */
-	switch(address)
-	{
-		case XOSERA_ADDRESS:
-			return xosera_device_read();
-		default:
-			break;
-	}
 	if(address > MAX_RAM)
 		exit_error("Attempted to read byte from RAM address %08x", address);
 	return READ_BYTE(g_ram, address);
@@ -144,25 +143,14 @@ unsigned int cpu_read_byte(unsigned int address)
 unsigned int cpu_read_word(unsigned int address)
 {
 	if (is_booting) {
-		const unsigned int w[] = {0x0000, 0x8000, 0x0000, 0x0000};
+		const unsigned int w[] = {0x0010, 0x0000, 0x0000, 0x2000};
 		return w[address / 2];
 	}
 
-	if(g_fc & 2)	/* Program */
-	{
-		if(address > MAX_ROM)
-			exit_error("Attempted to read word from ROM address %08x", address);
-		return READ_WORD(g_rom, address);
-	}
+	if (address >= XOSERA_ADDRESS_START && address < XOSERA_ADDRESS_END)
+		return xosera_device_read(address - XOSERA_ADDRESS_START);
 
 	/* Otherwise it's data space */
-	switch(address)
-	{
-		case XOSERA_ADDRESS:
-			return xosera_device_read();
-		default:
-			break;
-	}
 	if(address > MAX_RAM)
 		exit_error("Attempted to read word from RAM address %08x", address);
 	return READ_WORD(g_ram, address);
@@ -170,21 +158,16 @@ unsigned int cpu_read_word(unsigned int address)
 
 unsigned int cpu_read_long(unsigned int address)
 {
-	if(g_fc & 2)	/* Program */
-	{
-		if(address > MAX_ROM)
-			exit_error("Attempted to read long from ROM address %08x", address);
-		return READ_LONG(g_rom, address);
-	}
+	if (address == 0x414)
+		return 0x100000;
+
+	if (address == 0x40c)
+		return timer_100hz;
+
+	if (address >= XOSERA_ADDRESS_START && address < XOSERA_ADDRESS_END)
+		return xosera_device_read(address - XOSERA_ADDRESS_START);
 
 	/* Otherwise it's data space */
-	switch(address)
-	{
-		case XOSERA_ADDRESS:
-			return xosera_device_read();
-		default:
-			break;
-	}
 	if(address > MAX_RAM)
 		exit_error("Attempted to read long from RAM address %08x", address);
 	return READ_LONG(g_ram, address);
@@ -193,34 +176,28 @@ unsigned int cpu_read_long(unsigned int address)
 
 unsigned int cpu_read_word_dasm(unsigned int address)
 {
-	if(address > MAX_ROM)
-		exit_error("Disassembler attempted to read word from ROM address %08x", address);
-	return READ_WORD(g_rom, address);
+	if(address > MAX_RAM)
+		exit_error("Disassembler attempted to read word from RAM address %08x", address);
+	return READ_WORD(g_ram, address);
 }
 
 unsigned int cpu_read_long_dasm(unsigned int address)
 {
-	if(address > MAX_ROM)
-		exit_error("Dasm attempted to read long from ROM address %08x", address);
-	return READ_LONG(g_rom, address);
+	if(address > MAX_RAM)
+		exit_error("Dasm attempted to read long from RAM address %08x", address);
+	return READ_LONG(g_ram, address);
 }
 
 
 /* Write data to RAM or a device */
 void cpu_write_byte(unsigned int address, unsigned int value)
 {
-	if(g_fc & 2)	/* Program */
-		exit_error("Attempted to write %02x to ROM address %08x", value&0xff, address);
+	if (address >= XOSERA_ADDRESS_START && address < XOSERA_ADDRESS_END) {
+			xosera_device_write(address - XOSERA_ADDRESS_START, value&0xff);
+			return;
+	}
 
 	/* Otherwise it's data space */
-	switch(address)
-	{
-		case XOSERA_ADDRESS:
-			xosera_device_write(value&0xff);
-			return;
-		default:
-			break;
-	}
 	if(address > MAX_RAM)
 		exit_error("Attempted to write %02x to RAM address %08x", value&0xff, address);
 	WRITE_BYTE(g_ram, address, value);
@@ -228,18 +205,12 @@ void cpu_write_byte(unsigned int address, unsigned int value)
 
 void cpu_write_word(unsigned int address, unsigned int value)
 {
-	if(g_fc & 2)	/* Program */
-		exit_error("Attempted to write %04x to ROM address %08x", value&0xffff, address);
+	if (address >= XOSERA_ADDRESS_START && address < XOSERA_ADDRESS_END) {
+			xosera_device_write(address - XOSERA_ADDRESS_START, value&0xffff);
+			return;
+	}
 
 	/* Otherwise it's data space */
-	switch(address)
-	{
-		case XOSERA_ADDRESS:
-			xosera_device_write(value&0xffff);
-			return;
-		default:
-			break;
-	}
 	if(address > MAX_RAM)
 		exit_error("Attempted to write %04x to RAM address %08x", value&0xffff, address);
 	WRITE_WORD(g_ram, address, value);
@@ -247,18 +218,12 @@ void cpu_write_word(unsigned int address, unsigned int value)
 
 void cpu_write_long(unsigned int address, unsigned int value)
 {
-	if(g_fc & 2)	/* Program */
-		exit_error("Attempted to write %08x to ROM address %08x", value, address);
+	if (address >= XOSERA_ADDRESS_START && address < XOSERA_ADDRESS_END) {
+			xosera_device_write(address - XOSERA_ADDRESS_START, value);
+			return;
+	}
 
 	/* Otherwise it's data space */
-	switch(address)
-	{
-		case XOSERA_ADDRESS:
-			xosera_device_write(value);
-			return;
-		default:
-			break;
-	}
 	if(address > MAX_RAM)
 		exit_error("Attempted to write %08x to RAM address %08x", value, address);
 	WRITE_LONG(g_ram, address, value);
@@ -342,20 +307,45 @@ int xosera_device_ack(void)
 	return M68K_INT_ACK_AUTOVECTOR;
 }
 
-unsigned int xosera_device_read(void)
+unsigned int xosera_device_read(unsigned int address)
 {
+	while (assert_xosera_strobe_counter > 0 && is_m68k_running)
+		std::this_thread::sleep_for(std::chrono::microseconds(1));
+
+	top_m.lock();
+	top->xosera_reg_num = address >> 2;
+	top->xosera_bytesel = address & 0x2 ? 1 : 0;
+	top->xosera_rd_nwr = 1;
+	top->xosera_cs_n = 0;
+	top_m.unlock();
+
+	assert_xosera_strobe_counter = 4;
+	while (assert_xosera_strobe_counter > 0 && is_m68k_running)
+		std::this_thread::sleep_for(std::chrono::microseconds(1));
+
+	unsigned int value; 
+	top_m.lock();
+	value = top->xosera_data_out;
+	top_m.unlock();
+
 	int_controller_clear(IRQ_XOSERA_DEVICE);
-	return 0;
+	return value;
 }
 
-void xosera_device_write(unsigned int value)
+void xosera_device_write(unsigned int address, unsigned int value)
 {
-	top->xosera_reg_num = (value >> 8) & 0xF;
-	top->xosera_bytesel = value & 0x1000 ? 1 : 0;
-	top->xosera_data_in = value & 0xFF;
+	while (assert_xosera_strobe_counter > 0 && is_m68k_running)
+		std::this_thread::sleep_for(std::chrono::microseconds(1));
+
+	top_m.lock();
+	top->xosera_reg_num = address >> 2;
+	top->xosera_bytesel = address & 0x2 ? 1 : 0;
+	top->xosera_data_in = value & 0xff;
 	top->xosera_rd_nwr = 0;
 	top->xosera_cs_n = 0;
 	assert_xosera_strobe_counter = 4;
+	top_m.unlock();
+	//printf("Xosera write: address=%x, value=%x, reg_num=%x, bytesel=%x, data_in=%x\n", address, value, top->xosera_reg_num, top->xosera_bytesel, top->xosera_data_in);
 }
 
 /* Implementation for the interrupt controller */
@@ -383,58 +373,11 @@ void int_controller_clear(unsigned int value)
 	m68k_set_irq(g_int_controller_highest_int);
 }
 
-/* Disassembler */
-void make_hex(char* buff, unsigned int pc, unsigned int length)
-{
-	char* ptr = buff;
-
-	for(;length>0;length -= 2)
-	{
-		sprintf(ptr, "%04x", cpu_read_word_dasm(pc));
-		pc += 2;
-		ptr += 4;
-		if(length > 2)
-			*ptr++ = ' ';
-	}
-}
-
-void disassemble_program()
-{
-	unsigned int pc;
-	unsigned int instr_size;
-	char buff[100];
-	char buff2[100];
-
-	pc = cpu_read_long_dasm(4);
-
-	while(pc <= 0x16e)
-	{
-		instr_size = m68k_disassemble(buff, pc, M68K_CPU_TYPE_68000);
-		make_hex(buff2, pc, instr_size);
-		printf("%03x: %-20s: %s\n", pc, buff2, buff);
-		pc += instr_size;
-	}
-	fflush(stdout);
-}
 
 void cpu_instr_callback(int pc)
 {
 	(void)pc;
-/* The following code would print out instructions as they are executed */
-/*
-	static char buff[100];
-	static char buff2[100];
-	static unsigned int pc;
-	static unsigned int instr_size;
-
-	pc = m68k_get_reg(NULL, M68K_REG_PC);
-	instr_size = m68k_disassemble(buff, pc, M68K_CPU_TYPE_68000);
-	make_hex(buff2, pc, instr_size);
-	printf("E %03x: %-20s: %s\n", pc, buff2, buff);
-	fflush(stdout);
-*/
 }
-
 
 
 // ---------------------------------------------------------
@@ -450,23 +393,33 @@ double sc_time_stamp()
     return 0.0;
 }
 
+void m68k()
+{
+	printf("m68k thread started.\n");
+    m68k_init();
+	m68k_set_cpu_type(M68K_CPU_TYPE_68000);
+
+	while(is_m68k_running) {
+		//std::unique_lock<std::mutex> lk(m68k_cv_m);
+		//m68k_cv.wait(lk);
+		if (is_m68k_reset) {
+			is_m68k_reset = false;
+			is_booting = true;
+			m68k_pulse_reset();
+			is_booting = false;
+		} else /*if (is_m68k_execute)*/ {
+			is_m68k_execute = false;
+			m68k_execute(100);
+		}
+	}
+	printf("m68k thread exited.\n");
+}
+
 int main(int argc, char **argv, char **env)
 {
 	const char* program_file = "test.bin";
 
 	FILE* fhandle;
-
-	if((fhandle = fopen(program_file, "rb")) == NULL)
-		exit_error("Unable to open %s", argv[1]);
-
-	if(fread(g_rom, 1, MAX_ROM+1, fhandle) <= 0)
-		exit_error("Error reading %s", argv[1]);
-
-    disassemble_program();
-
-
-    m68k_init();
-	m68k_set_cpu_type(M68K_CPU_TYPE_68000);
 
     SDL_Init(SDL_INIT_VIDEO);
 
@@ -522,6 +475,7 @@ int main(int argc, char **argv, char **env)
     bool quit = false;
 
     auto tp_frame = std::chrono::high_resolution_clock::now();
+    auto tp_timer = std::chrono::high_resolution_clock::now();
     auto tp_clk = std::chrono::high_resolution_clock::now();
     auto tp_now = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration_clk;
@@ -540,8 +494,34 @@ int main(int argc, char **argv, char **env)
 
 	bool deassert_xosera_strobe = false;
 
+	std::thread* m68k_thread = nullptr;
+
+	bool was_loaded = false;
+
     while (!contextp->gotFinish() && !quit)
     {
+		if (manual_reset && !was_loaded) {
+			if (m68k_thread) {
+				is_m68k_running = false;
+				m68k_cv.notify_one();
+				m68k_thread->join();
+			}
+
+			if((fhandle = fopen(program_file, "rb")) == NULL)
+				exit_error("Unable to open");
+
+			if(fread(g_ram+0x2000, 1, MAX_RAM+1-0x2000, fhandle) <= 0)
+				exit_error("Error reading %s", argv[1]);
+
+			fclose(fhandle);
+
+			timer_100hz = 0;
+			is_m68k_running = true;
+			m68k_thread = new std::thread(m68k);
+			was_loaded = true;
+		}
+
+		top_m.lock();
 
 		//std::cout << "PC: " << m68k_get_reg(NULL,M68K_REG_PC) << "\n";
 
@@ -556,8 +536,10 @@ int main(int argc, char **argv, char **env)
         contextp->timeInc(1);
         top->clk = 1;
 
-		if ((contextp->time() % 8 == 0) && !top->reset)
-			m68k_execute(1);
+		//if ((contextp->time() % 8 == 0) && !top->reset) {
+		//	is_m68k_execute = true;
+		//	m68k_cv.notify_one();
+		//}
 
         if (manual_reset || (contextp->time() > 1 && contextp->time() < 10))
         {
@@ -567,9 +549,8 @@ int main(int argc, char **argv, char **env)
         {
 			if (top->reset) {
 	            top->reset = 0; // Deassert reset
-				is_booting = true;
-			    m68k_pulse_reset();
-				is_booting = false;
+				is_m68k_reset = true;
+				m68k_cv.notify_one();
 			}
         }
 
@@ -599,12 +580,19 @@ int main(int argc, char **argv, char **env)
 
         tp_now = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration_frame = tp_now - tp_frame;
+		std::chrono::duration<double> duration_timer = tp_now - tp_timer;
 
         if (contextp->time() % 2000000 == 0)
         {
             duration_clk = tp_now - tp_clk;
             tp_clk = tp_now;
         }
+
+		if (duration_timer.count() >= 1.0 / 100.0)
+		{
+			timer_100hz++;
+			tp_timer = tp_now;
+		}
 
         if (duration_frame.count() >= 1.0 / 60.0)
         {
@@ -632,6 +620,7 @@ int main(int argc, char **argv, char **env)
                         {
                         case SDLK_F1:
                             manual_reset = true;
+							was_loaded = false;
                             std::cout << "Reset pressed\n";
                             break;
                         }
@@ -671,9 +660,16 @@ int main(int argc, char **argv, char **env)
 			assert_xosera_strobe_counter--;
 			if (assert_xosera_strobe_counter == 0) {
 				top->xosera_cs_n = 1;
+				top->xosera_rd_nwr = 1;
 			}
 		}
+
+		top_m.unlock();
     }
+
+	is_m68k_running = false;
+	m68k_cv.notify_one();
+	m68k_thread->join();
 
     // Final model cleanup
     top->final();
@@ -685,6 +681,7 @@ int main(int argc, char **argv, char **env)
 
     SDL_DestroyWindow(window);
     SDL_Quit();
+
 
 
     return 0;
