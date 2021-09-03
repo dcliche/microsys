@@ -21,6 +21,13 @@ init0:
 	cmp.w	#$55AA,d0
 	bne	init0
 
+	move.l	#$AA55,d0
+init1:
+	movep.w	d0,(XVID_CONST_VAL,a0)
+	movep.w	(XVID_CONST_VAL,a0),d0
+	cmp.w	#$AA55,d0
+	bne	init1
+
 	move.l	#42,-(sp)	; character
 	move.l	#2,-(sp)	; color
 	jsr	xcls
