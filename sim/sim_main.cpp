@@ -19,11 +19,8 @@ Vtop *top;
 std::atomic<int> assert_xosera_strobe_counter{0};
 bool is_booting = false;
 bool is_m68k_reset = false;
-bool is_m68k_execute = false;
 bool is_m68k_running = true;
 
-std::condition_variable m68k_cv;
-std::mutex m68k_cv_m;
 std::mutex top_m;
 
 unsigned int timer_100hz = 0;
@@ -329,6 +326,9 @@ unsigned int xosera_device_read(unsigned int address)
 	top_m.unlock();
 
 	int_controller_clear(IRQ_XOSERA_DEVICE);
+
+	//printf("Xosera read: address=%x, value=%x, reg_num=%x, bytesel=%x\n", address, value, top->xosera_reg_num, top->xosera_bytesel);
+
 	return value;
 }
 
@@ -408,9 +408,8 @@ void m68k()
 			m68k_pulse_reset();
 			is_booting = false;
 		}
-		else /*if (is_m68k_execute)*/
+		else
 		{
-			is_m68k_execute = false;
 			m68k_execute(100);
 		}
 	}
@@ -507,12 +506,13 @@ int main(int argc, char **argv, char **env)
 			if (m68k_thread)
 			{
 				is_m68k_running = false;
-				m68k_cv.notify_one();
 				m68k_thread->join();
 			}
 
 			if ((fhandle = fopen(program_file, "rb")) == NULL)
 				exit_error("Unable to open");
+
+			memset(g_ram, 0, MAX_RAM + 1);
 
 			if (fread(g_ram + 0x2000, 1, MAX_RAM + 1 - 0x2000, fhandle) <= 0)
 				exit_error("Error reading %s", argv[1]);
@@ -520,6 +520,7 @@ int main(int argc, char **argv, char **env)
 			fclose(fhandle);
 
 			timer_100hz = 0;
+			is_m68k_reset = true;
 			is_m68k_running = true;
 			m68k_thread = new std::thread(m68k);
 			was_loaded = true;
@@ -555,7 +556,6 @@ int main(int argc, char **argv, char **env)
 			{
 				top->reset = 0; // Deassert reset
 				is_m68k_reset = true;
-				m68k_cv.notify_one();
 			}
 		}
 
@@ -675,7 +675,6 @@ int main(int argc, char **argv, char **env)
 	}
 
 	is_m68k_running = false;
-	m68k_cv.notify_one();
 	m68k_thread->join();
 
 	// Final model cleanup
