@@ -1,12 +1,21 @@
 XOSERA_ADDRESS	equ	$f80060
 
-XVID_AUX_ADDR	equ	$00
-XVID_CONST_VAL	equ	$04
-XVID_WRITE_ADDR	equ	$0C
-XVID_DATA	equ	$10
-XVID_AUX_DATA	equ	$18
-XVID_WRITE_INC	equ	$24
-XVID_WR_PR_CMD	equ	$38
+XM_XR_ADDR	equ	$00
+XM_XR_DATA	equ	$04
+XM_RD_INCR	equ	$08
+XM_RD_ADDR	equ	$0C
+XM_WR_INCR	equ	$10
+XM_WR_ADDR	equ	$14
+XM_DATA		equ	$18
+XM_DATA_2	equ	$1C
+XM_SYS_CTRL	equ	$20
+XM_TIMER	equ	$24
+XM_WR_PR_CMD	equ	$28
+XM_UNUSED_B	equ	$2C
+XM_RW_INCR	equ	$30
+XM_RW_ADDR	equ	$34
+XM_RW_DATA	equ	$38
+XM_RW_DATA_2	equ	$3C
 
 	org	$2000
 
@@ -14,18 +23,18 @@ init:
 
 	; Wait until Xosera is ready
 	lea	XOSERA_ADDRESS,a0
-	move.l	#$55AA,d0
 init0:
-	movep.w	d0,(XVID_CONST_VAL,a0)
-	movep.w	(XVID_CONST_VAL,a0),d0
-	cmp.w	#$55AA,d0
+	move.l	#$F5A5,d0
+	movep.w	d0,(XM_XR_ADDR,a0)
+	movep.w	(XM_XR_ADDR,a0),d0
+	cmp.w	#$F5A5,d0
 	bne	init0
 
-	move.l	#$AA55,d0
 init1:
-	movep.w	d0,(XVID_CONST_VAL,a0)
-	movep.w	(XVID_CONST_VAL,a0),d0
-	cmp.w	#$AA55,d0
+	move.l	#$FA5A,d0
+	movep.w	d0,(XM_XR_ADDR,a0)
+	movep.w	(XM_XR_ADDR,a0),d0
+	cmp.w	#$FA5A,d0
 	bne	init1
 
 	move.l	#42,-(sp)	; character
@@ -52,7 +61,7 @@ xcls:
 	;
 
 	move.l	#0,d0
-	movep.w	d0,(XVID_WRITE_INC,a1)
+	movep.w	d0,(XM_WR_INCR,a1)
 
 	
 	move.l	#2400,d3 	; d3 = Number of characters (80x25)
@@ -63,21 +72,21 @@ xcls0:
 	; Set write address
 	;
 
-	movep.w	d4,(XVID_WRITE_ADDR,a1)
+	movep.w	d4,(XM_WR_ADDR,a1)
 
 	;
 	; Write color
 	;
 
 	move.l	(4,a0),d0
-	move.b	d0,(XVID_DATA,a1)
+	move.b	d0,(XM_DATA,a1)
 
 	;
 	; Write character
 	;
 
 	move.l	(8,a0),d0
-	move.b	d0,(XVID_DATA+2,a1)
+	move.b	d0,(XM_DATA+2,a1)
 
 	; Increment and continue
 
