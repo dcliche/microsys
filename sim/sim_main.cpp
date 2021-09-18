@@ -20,6 +20,7 @@ std::atomic<int> assert_xosera_strobe_counter{0};
 bool is_booting = false;
 bool is_m68k_reset = false;
 bool is_m68k_running = true;
+bool is_m68k_irq = false;
 
 std::mutex top_m;
 
@@ -35,7 +36,7 @@ void disassemble_program();
 
 /* IRQ connections */
 #define IRQ_NMI_DEVICE 7
-#define IRQ_XOSERA_DEVICE 1 // TODO
+#define IRQ_XOSERA_DEVICE 2
 
 /* Time between characters sent to output device (seconds) */
 //#define OUTPUT_DEVICE_PERIOD 1
@@ -410,7 +411,19 @@ void m68k()
 		}
 		else
 		{
-			m68k_execute(100);
+			if (is_m68k_irq)
+			{
+				is_m68k_irq = false;
+
+				// Execute interrupt
+				int_controller_set(IRQ_XOSERA_DEVICE);
+				m68k_execute(1);
+				int_controller_clear(IRQ_XOSERA_DEVICE);
+			}
+			else
+			{
+				m68k_execute(1);
+			}
 		}
 	}
 	printf("m68k thread exited.\n");
@@ -452,7 +465,7 @@ int main(int argc, char **argv, char **env)
 
 	// Randomization reset policy
 	// May be overridden by commandArgs argument parsing
-	contextp->randReset(0);
+	contextp->randReset(1);
 
 	// Verilator must compute traced signals
 	contextp->traceEverOn(true);
@@ -527,6 +540,9 @@ int main(int argc, char **argv, char **env)
 		}
 
 		top_m.lock();
+
+		if (m68k_thread && top->xosera_intr)
+			is_m68k_irq = true;
 
 		//std::cout << "PC: " << m68k_get_reg(NULL,M68K_REG_PC) << "\n";
 

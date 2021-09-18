@@ -37,9 +37,9 @@ verilate(top TRACE
     "-Wno-WIDTH"
   )
 
-configure_file(${CMAKE_SOURCE_DIR}/external/Xosera/rtl/fonts/font_ST_8x8w.mem ${CMAKE_CURRENT_BINARY_DIR}/fonts/font_ST_8x8w.mem COPYONLY)
-configure_file(${CMAKE_SOURCE_DIR}/external/Xosera/rtl/fonts/font_ST_8x16w.mem ${CMAKE_CURRENT_BINARY_DIR}/fonts/font_ST_8x16w.mem COPYONLY)
-configure_file(${CMAKE_SOURCE_DIR}/external/Xosera/rtl/fonts/hexfont_8x8w.mem ${CMAKE_CURRENT_BINARY_DIR}/fonts/hexfont_8x8w.mem COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/external/Xosera/rtl/tilesets/font_ST_8x8w.mem ${CMAKE_CURRENT_BINARY_DIR}/tilesets/font_ST_8x8w.mem COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/external/Xosera/rtl/tilesets/font_ST_8x16w.mem ${CMAKE_CURRENT_BINARY_DIR}/tilesets/font_ST_8x16w.mem COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/external/Xosera/rtl/tilesets/ANSI_PC_8x8w.mem ${CMAKE_CURRENT_BINARY_DIR}/tilesets/ANSI_PC_8x8w.mem COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/external/Xosera/rtl/default_colors.mem ${CMAKE_CURRENT_BINARY_DIR}/default_colors.mem COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/external/Xosera/rtl/default_sprite.mem ${CMAKE_CURRENT_BINARY_DIR}/default_sprite.mem COPYONLY)
 
