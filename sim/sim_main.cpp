@@ -102,6 +102,8 @@ unsigned int g_int_controller_highest_int = 0; /* Highest pending interrupt */
 unsigned char g_ram[MAX_RAM + 1]; /* RAM */
 unsigned int g_fc;				  /* Current function code from CPU */
 
+bool g_is_paused = false;
+
 /* Exit with an error message.  Use printf syntax. */
 void exit_error(const char *fmt, ...)
 {
@@ -400,6 +402,9 @@ void m68k()
 
 	while (is_m68k_running)
 	{
+		while (g_is_paused && is_m68k_running)
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
 		//std::unique_lock<std::mutex> lk(m68k_cv_m);
 		//m68k_cv.wait(lk);
 		if (is_m68k_reset)
@@ -427,6 +432,51 @@ void m68k()
 		}
 	}
 	printf("m68k thread exited.\n");
+}
+
+void process_sdl_events(bool& quit, bool& manual_reset, bool& was_loaded)
+{
+	SDL_Event e;
+
+	while (SDL_PollEvent(&e))
+	{
+		if (e.type == SDL_QUIT)
+		{
+			quit = true;
+		} else if (e.type == SDL_WINDOWEVENT) {
+			if (e.window.event == SDL_WINDOWEVENT_FOCUS_GAINED) {
+				std::cout << "Focus gained\n";
+				g_is_paused = false;
+			} else if (e.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
+				std::cout << "Focus lost\n";
+				g_is_paused = true;
+			}
+		}
+		else if (e.type == SDL_KEYUP)
+		{
+			switch (e.key.keysym.sym)
+			{
+			case SDLK_F1:
+				manual_reset = false;
+				std::cout << "Reset released\n";
+				break;
+			}
+		}
+		else if (e.type == SDL_KEYDOWN)
+		{
+			if (e.key.repeat == 0)
+			{
+				switch (e.key.keysym.sym)
+				{
+				case SDLK_F1:
+					manual_reset = true;
+					was_loaded = false;
+					std::cout << "Reset pressed\n";
+					break;
+				}
+			}
+		}
+	}
 }
 
 int main(int argc, char **argv, char **env)
@@ -465,7 +515,7 @@ int main(int argc, char **argv, char **env)
 
 	// Randomization reset policy
 	// May be overridden by commandArgs argument parsing
-	contextp->randReset(1);
+	contextp->randReset(0);
 
 	// Verilator must compute traced signals
 	contextp->traceEverOn(true);
@@ -485,7 +535,7 @@ int main(int argc, char **argv, char **env)
 	top->xosera_cs_n = 1;
 	top->xosera_rd_nwr = 1;
 
-	SDL_Event e;
+
 	bool quit = false;
 
 	auto tp_frame = std::chrono::high_resolution_clock::now();
@@ -514,6 +564,11 @@ int main(int argc, char **argv, char **env)
 
 	while (!contextp->gotFinish() && !quit)
 	{
+		while (g_is_paused && !quit) {
+			process_sdl_events(quit, manual_reset, was_loaded);
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		}
+
 		if (manual_reset && !was_loaded)
 		{
 			if (m68k_thread)
@@ -617,37 +672,7 @@ int main(int argc, char **argv, char **env)
 
 		if (duration_frame.count() >= 1.0 / 60.0)
 		{
-			while (SDL_PollEvent(&e))
-			{
-				if (e.type == SDL_QUIT)
-				{
-					quit = true;
-				}
-				else if (e.type == SDL_KEYUP)
-				{
-					switch (e.key.keysym.sym)
-					{
-					case SDLK_F1:
-						manual_reset = false;
-						std::cout << "Reset released\n";
-						break;
-					}
-				}
-				else if (e.type == SDL_KEYDOWN)
-				{
-					if (e.key.repeat == 0)
-					{
-						switch (e.key.keysym.sym)
-						{
-						case SDLK_F1:
-							manual_reset = true;
-							was_loaded = false;
-							std::cout << "Reset pressed\n";
-							break;
-						}
-					}
-				}
-			}
+			process_sdl_events(quit, manual_reset, was_loaded);
 
 			int draw_w, draw_h;
 			SDL_GL_GetDrawableSize(window, &draw_w, &draw_h);
